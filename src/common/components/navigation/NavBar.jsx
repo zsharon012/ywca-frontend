@@ -5,6 +5,7 @@ import styled from 'styled-components';
 
 import { Button } from '@/common/components/atoms/Button';
 import { useUser } from '@/common/contexts/UserContext';
+import logo from '@/assets/logo.png';
 
 import LogoutModal from './LogoutModal';
 
@@ -13,6 +14,7 @@ const StyledNav = styled.nav`
   gap: 10px;
   padding: 10px 20px;
   font-size: 20px;
+  font-family: 'Avenir', sans-serif;
 `;
 
 const LeftAligned = styled.div`
@@ -21,11 +23,25 @@ const LeftAligned = styled.div`
   gap: 10px;
 `;
 
-const LogoPlaceholder = styled(Button.Invisible)`
-  padding: 0;
-  font-size: 1.7rem;
-  font-weight: bold;
-  font-family: monospace;
+const LogoImage = styled.img`
+  height: 60px;
+  cursor: pointer;
+  object-fit: contain;
+`;
+
+const NavLink = styled.button`
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f0f0f0;
+  }
 `;
 
 export default function NavBar() {
@@ -54,7 +70,18 @@ export default function NavBar() {
   return (
     <StyledNav>
       <LeftAligned>
-        <LogoPlaceholder onClick={() => navigate('/')}>[LOGO]</LogoPlaceholder>
+        <LogoImage
+          src={logo}
+          alt="YWCA Logo"
+          onClick={() => navigate('/')}
+        />
+        {user && (
+          <>
+            <NavLink onClick={() => navigate('/dashboard')}>Dashboard</NavLink>
+            <NavLink onClick={() => navigate('/contacts')}>Contacts</NavLink>
+            <NavLink onClick={() => navigate('/templates')}>Templates</NavLink>
+          </>
+        )}
       </LeftAligned>
       {user ? (
         <Button.Secondary onClick={handleLogoutClick}>Log Out</Button.Secondary>
