@@ -8,6 +8,7 @@ import { UserProvider } from '@/common/contexts/UserContext';
 import NavLayout from '@/common/layouts/NavLayout';
 import AuthCallback from '@/pages/account/AuthCallback';
 import Login from '@/pages/account/Login';
+import GenerateUrl from '@/pages/account/GenerateUrl';
 import RequestPasswordReset from '@/pages/account/RequestPasswordReset';
 import ResetPassword from '@/pages/account/ResetPassword';
 import SignUp from '@/pages/account/SignUp';
@@ -24,6 +25,7 @@ export default function App() {
           <Route path='/' element={<NavLayout />}>
             <Route element={<PrivateRoute />}>
               <Route index element={<Home />} />
+              <Route path='generate-url' element={<GenerateUrl />} />
             </Route>
             <Route element={<PublicOnlyRoute />}>
               <Route path='login' element={<Login />} />
