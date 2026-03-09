@@ -4,19 +4,19 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-    
+import { getAuth } from 'firebase/auth';
+
 ModuleRegistry.registerModules([ AllCommunityModule ]);
 
 const Contacts = () => {
   const [rowData, setRowData] = useState([]);
 
-  // Function to get all contacts on initial rendering, and after editing the spreadsheet
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
-      const apiPath = `${baseUrl}/get-contacts`;
-      const response = await fetch(apiPath, {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+      
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-contacts`, {
         credentials: 'include',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,6 +53,7 @@ const Contacts = () => {
       <AgGridReact
         rowData={rowData}
         columnDefs={columnDefs}
+        theme="legacy"
         defaultColDef={{
           flex: 1,
           minWidth: 100,
