@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
@@ -37,7 +37,10 @@ const NavLink = styled.button`
   cursor: pointer;
   padding: 5px 10px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  text-decoration: ${({ $isActive }) => $isActive ? 'underline' : 'none'};
+  text-underline-offset: 5px;
+  font-weight: ${({ $isActive }) => $isActive ? 'bold' : 'normal'};
 
   &:hover {
     background-color: #f0f0f0;
@@ -47,6 +50,7 @@ const NavLink = styled.button`
 export default function NavBar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useUser();
 
   const handleLogoutClick = () => {
@@ -77,9 +81,24 @@ export default function NavBar() {
         />
         {user && (
           <>
-            <NavLink onClick={() => navigate('/dashboard')}>Dashboard</NavLink>
-            <NavLink onClick={() => navigate('/contacts')}>Contacts</NavLink>
-            <NavLink onClick={() => navigate('/templates')}>Templates</NavLink>
+            <NavLink
+              $isActive={location.pathname === '/dashboard'}
+              onClick={() => navigate('/dashboard')}
+            >
+              Dashboard
+            </NavLink>
+            <NavLink
+              $isActive={location.pathname === '/contacts'}
+              onClick={() => navigate('/contacts')}
+            >
+              Contacts
+            </NavLink>
+            <NavLink
+              $isActive={location.pathname === '/templates'}
+              onClick={() => navigate('/templates')}
+            >
+              Templates
+            </NavLink>
           </>
         )}
       </LeftAligned>
