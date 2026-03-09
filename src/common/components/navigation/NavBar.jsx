@@ -80,6 +80,7 @@ export default function NavBar() {
             <NavLink onClick={() => navigate('/dashboard')}>Dashboard</NavLink>
             <NavLink onClick={() => navigate('/contacts')}>Contacts</NavLink>
             <NavLink onClick={() => navigate('/templates')}>Templates</NavLink>
+            <NavLink onClick={() => navigate('/signuplinks')}>Create Sign Up Link</NavLink>
           </>
         )}
       </LeftAligned>
