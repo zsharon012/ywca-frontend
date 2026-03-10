@@ -81,7 +81,12 @@ export default function NavBar() {
         />
         {user && (
           <>
-            <NavLink onClick={() => navigate('/signuplinks')}>Create Sign Up Link</NavLink>
+            <NavLink
+              $isActive={location.pathname === '/signuplinks'}
+              onClick={() => navigate('/signuplinks')}
+            >
+              Create Sign Up Link
+            </NavLink>
             <NavLink
               $isActive={location.pathname === '/dashboard'}
               onClick={() => navigate('/dashboard')}
