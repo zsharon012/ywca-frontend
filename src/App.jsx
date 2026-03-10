@@ -13,6 +13,7 @@ import RequestPasswordReset from '@/pages/account/RequestPasswordReset';
 import ResetPassword from '@/pages/account/ResetPassword';
 import SignUp from '@/pages/account/SignUp';
 import Home from '@/pages/home/Home';
+import Contacts from '@/pages/contacts/Contacts';
 import NotFound from '@/pages/not-found/NotFound';
 
 import './App.css';
@@ -26,6 +27,7 @@ export default function App() {
             <Route element={<PrivateRoute />}>
               <Route index element={<Home />} />
               <Route path='signuplinks' element={<SignUpLinks/>} />
+              <Route path='contacts' element={<Contacts />} />
             </Route>
             <Route element={<PublicOnlyRoute />}>
               <Route path='login' element={<Login />} />

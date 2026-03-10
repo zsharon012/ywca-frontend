@@ -54,7 +54,7 @@ export default function Footer() {
       </FooterSection>
 
       <Copyright>
-        © {new Date().getFullYear()} YWCA Evansont/North Shore, All Rights Reserved.
+        © {new Date().getFullYear()} YWCA Evanston/North Shore, All Rights Reserved.
       </Copyright>
       <Copyright>
         Established in 1931. Registered 501(c)(3). EIN: 36-2193618
