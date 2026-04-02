@@ -34,7 +34,7 @@ const Contacts = () => {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
       
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-contacts`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/recipients`, {
         credentials: 'include',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -46,8 +46,7 @@ const Contacts = () => {
       }
 
       const data = await response.json();
-      const contacts = data["data"];
-
+      const contacts = Array.isArray(data) ? data : data["data"];
       setRowData(contacts);
       setUpdateError(null);
 
@@ -110,7 +109,6 @@ const Contacts = () => {
     { field: 'email', headerName: 'Email', editable: true, filter: 'agTextColumnFilter' },
     { field: 'phone', headerName: 'Phone', editable: true, filter: 'agTextColumnFilter' },
   ]);
-
   return (
     <div style={{ width: '100%', padding: '20px', boxSizing: 'border-box' }}>
       {updateError && (
