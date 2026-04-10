@@ -14,7 +14,7 @@ export default function  SignUpLinks() {
   const [error, setError] = useState('');
   // const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(true)
 
   const getLink = async (e) => {
     console.log('clicked');
@@ -49,15 +49,15 @@ export default function  SignUpLinks() {
           <LinkContainer>
             <LinkText>{inviteLink || 'HTTPS://YWCA/SAMPLELINKTOSIGNUPPAGE'}</LinkText>
               <CopyButton $copied={copied} onClick={handleCopy}>
-                <Copy size={18} color={copied ? 'white' : 'black'} />
+                <Copy size={18}/>
               </CopyButton>
             <GenerateButton onClick={getLink}>GENERATE LINK</GenerateButton>
           </LinkContainer>
                     <ExpiryNote>
             *THIS LINK WILL EXPIRE IN 24 HOURS
           </ExpiryNote>
+          <CopiedToast $show={copied}>Copied!</CopiedToast>
         </LinkWrapper>
-      <CopiedToast $show={copied}>Copied!</CopiedToast>
       </StyledForm>
       <WarningNote>
         WARNING: Make sure that this link is not shared with anyone you do not trust, it will allow them to create an account and use the dashboard

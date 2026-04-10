@@ -74,7 +74,7 @@ export const LinkText = styled.div`
 `;
 
 export const CopyButton = styled.button`
-  background-color: ${({ $copied }) => $copied ? '#45bf84' : '#f5f5f5'};
+  background-color: #f5f5f5;
   border: none;
   padding: 0 14px;
   cursor: pointer;
@@ -84,7 +84,7 @@ export const CopyButton = styled.button`
   align-self: stretch;
   transition: background-color 0.2s;
   &:hover {
-    background-color: ${({ $copied }) => $copied ? '#45bf84' : '#e0e0e0'};
+    filter: brightness(0.9);
   }
 `;
 
