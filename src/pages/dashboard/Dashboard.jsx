@@ -12,6 +12,8 @@ function DashboardCard({ title, children }) {
         'overflow-hidden',
         'border',
         'border-black',
+        'flex',
+        'flex-col',
         expanded ? 'min-h-[25rem]' : 'min-h-[9rem]',
     ].join(' ')
 
@@ -20,8 +22,8 @@ function DashboardCard({ title, children }) {
             <h2 className="m-0 mb-3 text-2xl text-slate-900">
                 {title}
             </h2>
-            <div>
-                {children}
+            <div className="flex flex-1 items-center">
+                {expanded && children}
             </div>
         </div>
     )
@@ -69,11 +71,13 @@ function SummaryStats() {
 
     return (
         <DashboardCard title="Summary and Statistics">
-            <div className="bg-orange-500 w-1/2 p-4 text-white rounded">
-                <h3 className="text-xl font-bold mb-2">Summary</h3>
-                <p>Pending: {pending}</p>
-                <p>Read: {read}</p>
-                <p>Unread: {unread}</p>
+            <div className="w-[575px] h-[244px] rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 m-4 text-white">
+                <h3 className="text-xl font-bold mt-6 mb-4 ml-4">Summary</h3>
+                <div className="ml-4 space-y-1">
+                    <h3 className="text-xl font-bold">Unread: {unread/unread + read}% ({unread} of {unread + read})</h3>
+                    <h3 className="text-xl font-bold">Read: {read/unread + read}% ({read} of {unread + read})</h3>
+                    <h3 className="text-xl font-bold">Pending: {pending}</h3>
+                </div>
             </div>
         </DashboardCard>
     )

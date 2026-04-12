@@ -4,10 +4,8 @@
   --secondary-lightgrey: #f3f3f3;
   --darkgrey: #747474;
   --white: #fff;
-  --text: #191a23;
 }
 
 * {
   font-family: Verdana, sans-serif;
-  color: var(--text);
 }
