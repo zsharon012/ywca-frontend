@@ -37,7 +37,7 @@ const NavLink = styled.button`
   cursor: pointer;
   padding: 5px 10px;
   border-radius: 4px;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   text-decoration: ${({ $isActive }) => $isActive ? 'underline' : 'none'};
   text-underline-offset: 5px;
   font-weight: ${({ $isActive }) => $isActive ? 'bold' : 'normal'};
