@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
 
-/* ── CSS Variables ── */
 :root {
   --color-primary: #d45f1a;
   --color-primary-hover: #b84e12;
@@ -25,7 +24,6 @@
   --transition: 0.15s ease;
 }
 
-/* ── Page ── */
 .contacts-page {
   font-family: var(--font);
   background: var(--color-bg);
@@ -35,7 +33,7 @@
   box-sizing: border-box;
 }
 
-/* ── Error banner ── */
+
 .contacts-error {
   background: var(--color-error-bg);
   color: var(--color-error-text);
@@ -47,7 +45,7 @@
   font-weight: 500;
 }
 
-/* ── Toolbar ── */
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -56,7 +54,7 @@
   flex-wrap: wrap;
 }
 
-/* Search box */
+
 .search-box {
   display: flex;
   align-items: center;
@@ -82,7 +80,7 @@
   color: var(--color-text-placeholder);
 }
 
-/* Filter bar */
+
 .filter-bar {
   display: flex;
   align-items: center;
@@ -121,7 +119,6 @@
   background: var(--color-primary-light-hover);
 }
 
-/* Select pill */
 .filter-pill--select {
   outline: none;
   appearance: none;
@@ -132,7 +129,6 @@
   background-position: right 8px center;
 }
 
-/* Text input pill */
 .filter-pill--input {
   min-width: 120px;
   cursor: text;
@@ -144,7 +140,6 @@
   border-color: var(--color-primary);
 }
 
-/* ── Table wrap + AG Grid overrides ── */
 .table-wrap {
   border: 1.5px solid var(--color-border-table);
   border-radius: var(--radius-lg);
@@ -155,7 +150,7 @@
   width: 100%;
 }
 
-/* Header row */
+
 .table-wrap .ag-header {
   background-color: var(--color-primary) !important;
   border-bottom: none !important;
@@ -177,12 +172,12 @@
   justify-content: flex-start;
 }
 
-/* Sort icons — make them white */
+
 .table-wrap .ag-header-icon {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
-/* Cell rows */
+
 .table-wrap .ag-row {
   font-family: var(--font) !important;
   font-size: 14px !important;
@@ -202,25 +197,23 @@
   background-color: var(--color-surface);
 }
 
-/* Selected / editing cell highlight */
 .table-wrap .ag-cell-focus:not(.ag-cell-range-selected):focus-within {
   border: 1.5px solid var(--color-primary) !important;
 }
 
-/* Cell text alignment */
+
 .table-wrap .ag-cell {
   display: flex;
   align-items: center;
 }
 
-/* Editable cell cursor */
 .table-wrap .ag-cell[col-id="name"],
 .table-wrap .ag-cell[col-id="email"],
+.table-wrap .ag-cell[col-id="contact-status"],
 .table-wrap .ag-cell[col-id="phone"] {
   cursor: text;
 }
 
-/* Filter input inside column header */
 .table-wrap .ag-filter-body-wrapper input {
   font-family: var(--font);
   font-size: 13px;
@@ -229,7 +222,7 @@
   padding: 4px 8px;
 }
 
-/* Scrollbar styling */
+
 .table-wrap ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

@@ -109,6 +109,7 @@ const Contacts = () => {
   const [columnDefs] = useState([
     { field: 'name', headerName: 'Name', editable: true, filter: 'agTextColumnFilter' },
     { field: 'email', headerName: 'Email', editable: true, filter: 'agTextColumnFilter' },
+    { field: 'contact-status', headerName: 'Contact Status', editable: true, filter: 'agTextColumnFilter' },
     { field: 'phone', headerName: 'Phone', editable: true, filter: 'agTextColumnFilter' },
   ]);
   return (
@@ -139,6 +140,7 @@ const Contacts = () => {
           >
             <option value="name">Name</option>
             <option value="email">Email</option>
+            <option value="contact-status">Contact Status</option>
             <option value="phone">Phone</option>
           </select>
           <span className="filter-bar__is">is</span>
