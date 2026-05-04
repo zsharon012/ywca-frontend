@@ -12,7 +12,6 @@ import {
 
 export default function  SignUpLinks() {
   const [error, setError] = useState('');
-  // const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(true)
 

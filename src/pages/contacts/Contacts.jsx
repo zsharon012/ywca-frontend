@@ -5,6 +5,8 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { getAuth } from 'firebase/auth';
+import { Search as SearchIcon, Filter as FilterIcon } from 'lucide-react';
+import './Contacts.css';
 
 ModuleRegistry.registerModules([ AllCommunityModule ]);
 
@@ -196,21 +198,14 @@ const Contacts = () => {
   const [columnDefs] = useState([
     { field: 'name', headerName: 'Name', editable: true, filter: 'agTextColumnFilter' },
     { field: 'email', headerName: 'Email', editable: true, filter: 'agTextColumnFilter' },
+    { field: 'contact-status', headerName: 'Contact Status', editable: true, filter: 'agTextColumnFilter' },
     { field: 'phone', headerName: 'Phone', editable: true, filter: 'agTextColumnFilter' },
   ]);
 
   return (
-    <div style={{ width: '100%', padding: '20px', boxSizing: 'border-box' }}>
+    <div className="contacts-page">
       {updateError && (
-        <div style={{
-          backgroundColor: '#fee',
-          color: '#c00',
-          padding: '10px',
-          marginBottom: '10px',
-          borderRadius: '4px',
-        }}>
-          {updateError}
-        </div>
+        <div className="contacts-error">{updateError}</div>
       )}
 
       {uploadStatus === 'success' && (
@@ -240,47 +235,34 @@ const Contacts = () => {
       <div style={{ display: 'flex', gap: '20px', marginBottom: '10px', marginTop: '20px', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <input
+            className="search-box__input"
             type="text"
             placeholder="Search all..."
             value={quickFilterText}
             onChange={(e) => setQuickFilterText(e.target.value)}
-            style={{
-              width: '200px',
-              padding: '10px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
           />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+
+        <div className="filter-bar">
+          <FilterIcon />
+          <span className="filter-bar__label">Filter where</span>
           <select
+            className="filter-pill filter-pill--select"
             value={selectedColumn}
             onChange={(e) => setSelectedColumn(e.target.value)}
-            style={{
-              padding: '10px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
           >
             <option value="name">Name</option>
             <option value="email">Email</option>
+            <option value="contact-status">Contact Status</option>
             <option value="phone">Phone</option>
           </select>
-          <span>is</span>
+          <span className="filter-bar__is">is</span>
           <input
+            className="filter-pill filter-pill--input"
             type="text"
             placeholder="Filter..."
             value={filterValue}
             onChange={(e) => setFilterValue(e.target.value)}
-            style={{
-              width: '150px',
-              padding: '10px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
           />
         </div>
 
@@ -319,10 +301,7 @@ const Contacts = () => {
           theme="legacy"
           quickFilterText={quickFilterText}
           onGridReady={(params) => setGridApi(params.api)}
-          defaultColDef={{
-            flex: 1,
-            minWidth: 100,
-          }}
+          defaultColDef={{ flex: 1, minWidth: 100 }}
         />
       </div>
     </div>
