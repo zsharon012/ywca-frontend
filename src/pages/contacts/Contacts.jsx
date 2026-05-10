@@ -19,7 +19,7 @@ const Contacts = () => {
   const [selectedColumn, setSelectedColumn] = useState('name');
   const [filterValue, setFilterValue] = useState('');
   const [gridApi, setGridApi] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error' | null
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadMessage, setUploadMessage] = useState('');
   const [showAddContact, setShowAddContact] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
@@ -143,7 +143,6 @@ const Contacts = () => {
       }
 
       setUpdateError(null);
-      console.log("Contact updated successfully");
     } catch (error) {
       console.error("Error updating contact:", error);
       setUpdateError("Failed to update contact. Changes were not saved.");
@@ -225,6 +224,7 @@ const Contacts = () => {
       setUploadStatus('success');
       setUploadMessage('Contact deleted successfully');
       fetchData();
+      fetchGroups();
       setTimeout(() => {
         setUploadStatus(null);
         setUploadMessage('');
@@ -345,6 +345,7 @@ const Contacts = () => {
       setUploadStatus('success');
       setUploadMessage('Contact assigned to group');
       fetchData();
+      fetchGroups();
       setTimeout(() => {
         setUploadStatus(null);
         setUploadMessage('');
@@ -378,6 +379,7 @@ const Contacts = () => {
       setUploadStatus('success');
       setUploadMessage('Contact removed from group');
       fetchData();
+      fetchGroups();
       setTimeout(() => {
         setUploadStatus(null);
         setUploadMessage('');
@@ -404,7 +406,7 @@ const Contacts = () => {
     }
 
     return lines.slice(1).map((line, index) => {
-      if (!line.trim()) return null; // Skip empty lines
+      if (!line.trim()) return null;
       const values = line.split(',').map(v => v.trim());
       const row = {};
       headers.forEach((h, i) => {
@@ -460,7 +462,7 @@ const Contacts = () => {
       setUploadStatus('success');
       setUploadMessage(`Successfully uploaded ${result.inserted} contact(s)`);
       setUpdateError(null);
-      fetchData(); // refresh the table
+      fetchData();
       setTimeout(() => {
         setUploadStatus(null);
         setUploadMessage('');
@@ -549,7 +551,7 @@ const Contacts = () => {
   ]);
 
   return (
-    <div className="contacts-page">
+    <div className={`contacts-page ${showGroupManagement ? 'contacts-page--sidebar-open' : ''}`}>
       {updateError && (
         <div className="contacts-error">{updateError}</div>
       )}
@@ -699,36 +701,83 @@ const Contacts = () => {
             {groups.length === 0 ? (
               <p style={{ color: '#999' }}>No groups yet</p>
             ) : (
-              groups.map(group => (
-                <div
-                  key={group.id}
-                  style={{
-                    padding: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#f9f9f9',
-                    borderRadius: '4px',
-                    border: '1px solid #eee',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 'bold' }}>{group.name}</div>
-                      <div style={{ fontSize: '12px', color: '#999' }}>{group.memberCount || 0} members</div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteGroup(group.id)}
+              groups.map(group => {
+                const groupContacts = rowData.filter(contact =>
+                  (contact.groups || []).some(g => g.id === group.id)
+                );
+                const isExpanded = selectedGroup === group.id;
+
+                return (
+                  <div
+                    key={group.id}
+                    style={{
+                      marginBottom: '10px',
+                      backgroundColor: '#f9f9f9',
+                      borderRadius: '4px',
+                      border: '1px solid #eee',
+                    }}
+                  >
+                    {/* Group Header */}
+                    <div
+                      onClick={() => setSelectedGroup(isExpanded ? null : group.id)}
                       style={{
-                        background: 'none',
-                        border: 'none',
+                        padding: '10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         cursor: 'pointer',
-                        color: 'var(--color-error-text)',
                       }}
                     >
-                      <TrashIcon size={16} />
-                    </button>
+                      <div>
+                        <div style={{ fontWeight: 'bold' }}>{group.name}</div>
+                        <div style={{ fontSize: '12px', color: '#999' }}>{parseInt(group.membercount) || 0} members</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#999' }}>{isExpanded ? '▲' : '▼'}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-error-text)',
+                          }}
+                        >
+                          <TrashIcon size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Member List */}
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid #eee', padding: '8px 10px' }}>
+                        {groupContacts.length === 0 ? (
+                          <div style={{ fontSize: '13px', color: '#999' }}>No members yet</div>
+                        ) : (
+                          groupContacts.map(contact => (
+                            <div
+                              key={contact.recipientid}
+                              style={{
+                                fontSize: '13px',
+                                padding: '6px 0',
+                                borderBottom: '1px solid #f0f0f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: '500' }}>{contact.name}</div>
+                                <div style={{ fontSize: '11px', color: '#999' }}>{contact.email}</div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
