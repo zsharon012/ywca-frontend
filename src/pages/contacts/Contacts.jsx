@@ -5,13 +5,15 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { getAuth } from 'firebase/auth';
-import { Search as SearchIcon, Filter as FilterIcon } from 'lucide-react';
+import { Search as SearchIcon, Filter as FilterIcon, X as CloseIcon, Plus as PlusIcon, Trash2 as TrashIcon } from 'lucide-react';
 import './Contacts.css';
 
 ModuleRegistry.registerModules([ AllCommunityModule ]);
 
 const Contacts = () => {
   const [rowData, setRowData] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [updateError, setUpdateError] = useState(null);
   const [quickFilterText, setQuickFilterText] = useState('');
   const [selectedColumn, setSelectedColumn] = useState('name');
@@ -19,6 +21,13 @@ const Contacts = () => {
   const [gridApi, setGridApi] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error' | null
   const [uploadMessage, setUploadMessage] = useState('');
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [showGroupManagement, setShowGroupManagement] = useState(false);
+  const [newContact, setNewContact] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [newGroup, setNewGroup] = useState({ name: '', description: '' });
+  const [selectedContactForGroup, setSelectedContactForGroup] = useState(null);
+  const [contactGroupAssignments, setContactGroupAssignments] = useState({});
   const fileInputRef = useRef(null);
 
   const applyFilter = () => {
@@ -39,7 +48,7 @@ const Contacts = () => {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
       
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/recipients`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/recipients-with-groups`, {
         credentials: 'include',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,6 +62,13 @@ const Contacts = () => {
       const data = await response.json();
       const contacts = Array.isArray(data) ? data : data["data"];
       setRowData(contacts);
+      
+      // Build contact-to-group mapping
+      const mapping = {};
+      contacts.forEach(contact => {
+        mapping[contact.recipientid] = (contact.groups || []).map(g => g.id);
+      });
+      setContactGroupAssignments(mapping);
       setUpdateError(null);
 
     } catch (error) {
@@ -61,9 +77,35 @@ const Contacts = () => {
     }
   };
 
-  // fetch initial contacts from backend
+  const fetchGroups = async () => {
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists`, {
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch groups');
+      }
+
+      const data = await response.json();
+      const groupsList = Array.isArray(data) ? data : data["data"] || [];
+      setGroups(groupsList);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+      setUpdateError("Failed to fetch groups");
+    }
+  };
+
+  // Fetch initial contacts and groups
   useEffect(() => {
     fetchData();
+    fetchGroups();
   }, []);
 
   const handleCellValueChanged = async (event) => {
@@ -79,7 +121,7 @@ const Contacts = () => {
       const token = await auth.currentUser.getIdToken();
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/update-contact/${data.recipientid}`,
+        `${import.meta.env.VITE_BACKEND_URL}/contacts/members/${data.recipientid}`,
         {
           method: 'PUT',
           credentials: 'include',
@@ -88,7 +130,8 @@ const Contacts = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            name: data.name,
+            firstName: data.name?.split(' ')[0] || '',
+            lastName: data.name?.split(' ').slice(1).join(' ') || '',
             email: data.email,
             phone: data.phone,
           }),
@@ -104,8 +147,244 @@ const Contacts = () => {
     } catch (error) {
       console.error("Error updating contact:", error);
       setUpdateError("Failed to update contact. Changes were not saved.");
-      // Refresh data to show last saved state
       fetchData();
+    }
+  };
+
+  const handleAddContact = async (e) => {
+    e.preventDefault();
+    
+    if (!newContact.firstName || !newContact.email) {
+      setUpdateError('First name and email are required');
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/recipients`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firstName: newContact.firstName,
+          lastName: newContact.lastName || '',
+          email: newContact.email,
+          phone: newContact.phone || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create contact');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Contact created successfully');
+      setNewContact({ firstName: '', lastName: '', email: '', phone: '' });
+      setShowAddContact(false);
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Add contact error:', error);
+      setUpdateError(error.message || 'Failed to create contact');
+    }
+  };
+
+  const handleDeleteContact = async (recipientId) => {
+    if (!window.confirm('Are you sure you want to delete this contact?')) {
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/contacts/recipients/${recipientId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete contact');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Contact deleted successfully');
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Delete contact error:', error);
+      setUpdateError('Failed to delete contact');
+    }
+  };
+
+  const handleAddGroup = async (e) => {
+    e.preventDefault();
+    
+    if (!newGroup.name) {
+      setUpdateError('Group name is required');
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newGroup.name,
+          description: newGroup.description || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create group');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Group created successfully');
+      setNewGroup({ name: '', description: '' });
+      setShowAddGroup(false);
+      fetchGroups();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Add group error:', error);
+      setUpdateError(error.message || 'Failed to create group');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    if (!window.confirm('Are you sure you want to delete this group?')) {
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/contacts/lists/${groupId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete group');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Group deleted successfully');
+      setSelectedGroup(null);
+      fetchGroups();
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Delete group error:', error);
+      setUpdateError('Failed to delete group');
+    }
+  };
+
+  const handleAssignContactToGroup = async (contactId, groupId) => {
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/members/add`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipientId: contactId,
+          contactlistID: groupId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to assign contact to group');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Contact assigned to group');
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Assign contact error:', error);
+      setUpdateError(error.message || 'Failed to assign contact');
+    }
+  };
+
+  const handleRemoveContactFromGroup = async (contactId, groupId) => {
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/contacts/lists/${groupId}/members/${contactId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to remove contact from group');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Contact removed from group');
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Remove contact error:', error);
+      setUpdateError('Failed to remove contact from group');
     }
   };
 
@@ -196,10 +475,77 @@ const Contacts = () => {
   };
 
   const [columnDefs] = useState([
-    { field: 'name', headerName: 'Name', editable: true, filter: 'agTextColumnFilter' },
+    { 
+      field: 'name', 
+      headerName: 'Name', 
+      editable: true, 
+      filter: 'agTextColumnFilter',
+      cellRenderer: (params) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <span>{params.value}</span>
+          <button
+            onClick={() => handleDeleteContact(params.data.recipientid)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-error-text)',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            title="Delete contact"
+          >
+            <TrashIcon size={16} />
+          </button>
+        </div>
+      )
+    },
     { field: 'email', headerName: 'Email', editable: true, filter: 'agTextColumnFilter' },
-    { field: 'contact-status', headerName: 'Contact Status', editable: true, filter: 'agTextColumnFilter' },
     { field: 'phone', headerName: 'Phone', editable: true, filter: 'agTextColumnFilter' },
+    {
+      field: 'groups',
+      headerName: 'Groups',
+      cellRenderer: (params) => (
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center', height: '100%' }}>
+          {params.value && params.value.map(group => (
+            <span
+              key={group.id}
+              style={{
+                backgroundColor: '#e0e0e0',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                lineHeight: '29px',
+                height: '29px',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              {group.name}
+            </span>
+          ))}
+          <button
+            onClick={() => setSelectedContactForGroup(params.data.recipientid)}
+            style={{
+              background: 'var(--color-primary-light)',
+              color: 'var(--color-primary-text)',
+              border: '1px solid var(--color-primary-border)',
+              borderRadius: '4px',
+              padding: '2px 6px',
+              cursor: 'pointer',
+              fontSize: '10px',
+              height: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            +
+          </button>
+        </div>
+      )
+    }
   ]);
 
   return (
@@ -232,8 +578,226 @@ const Contacts = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '10px', marginTop: '20px', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+      {/* Group Management Sidebar */}
+      {showGroupManagement && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          height: '100vh',
+          width: '300px',
+          backgroundColor: 'white',
+          boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
+          padding: '20px',
+          overflowY: 'auto',
+          zIndex: 1000,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2>Groups</h2>
+            <button
+              onClick={() => setShowGroupManagement(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowAddGroup(true)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginBottom: '20px',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            <PlusIcon size={18} /> New Group
+          </button>
+
+          {showAddGroup && (
+            <div style={{
+              backgroundColor: '#f5f5f5',
+              padding: '15px',
+              borderRadius: '4px',
+              marginBottom: '20px',
+            }}>
+              <h3>Create Group</h3>
+              <form onSubmit={handleAddGroup}>
+                <input
+                  type="text"
+                  placeholder="Group name"
+                  value={newGroup.name}
+                  onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    marginBottom: '10px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <textarea
+                  placeholder="Description (optional)"
+                  value={newGroup.description}
+                  onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    marginBottom: '10px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      backgroundColor: 'var(--color-primary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Create
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddGroup(false)}
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      backgroundColor: 'var(--color-border)',
+                      color: 'var(--color-text)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div>
+            <h3>All Groups</h3>
+            {groups.length === 0 ? (
+              <p style={{ color: '#999' }}>No groups yet</p>
+            ) : (
+              groups.map(group => (
+                <div
+                  key={group.id}
+                  style={{
+                    padding: '10px',
+                    marginBottom: '10px',
+                    backgroundColor: '#f9f9f9',
+                    borderRadius: '4px',
+                    border: '1px solid #eee',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{group.name}</div>
+                      <div style={{ fontSize: '12px', color: '#999' }}>{group.memberCount || 0} members</div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteGroup(group.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--color-error-text)',
+                      }}
+                    >
+                      <TrashIcon size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Group Assignment Modal */}
+      {selectedContactForGroup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+          }}>
+            <h2>Assign to Group</h2>
+            <div style={{ marginBottom: '20px', maxHeight: '300px', overflowY: 'auto' }}>
+              {groups.map(group => {
+                const isAssigned = contactGroupAssignments[selectedContactForGroup]?.includes(group.id);
+                return (
+                  <div key={group.id} style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAssigned}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          handleAssignContactToGroup(selectedContactForGroup, group.id);
+                        } else {
+                          handleRemoveContactFromGroup(selectedContactForGroup, group.id);
+                        }
+                      }}
+                      style={{ marginRight: '10px' }}
+                    />
+                    <label>{group.name}</label>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setSelectedContactForGroup(null)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                backgroundColor: 'var(--color-border)',
+                color: 'var(--color-text)',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '10px', marginTop: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
           <input
             className="search-box__input"
             type="text"
@@ -253,7 +817,6 @@ const Contacts = () => {
           >
             <option value="name">Name</option>
             <option value="email">Email</option>
-            <option value="contact-status">Contact Status</option>
             <option value="phone">Phone</option>
           </select>
           <span className="filter-bar__is">is</span>
@@ -266,8 +829,45 @@ const Contacts = () => {
           />
         </div>
 
-        {/* CSV Upload Button */}
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {/* Add Contact Button */}
+          <button
+            onClick={() => setShowAddContact(true)}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <PlusIcon size={18} /> Add Contact
+          </button>
+
+          {/* Manage Groups Button */}
+          <button
+            onClick={() => setShowGroupManagement(true)}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '500',
+            }}
+          >
+            Manage Groups
+          </button>
+
+          {/* CSV Upload Button */}
           <input
             type="file"
             accept=".csv"
@@ -279,7 +879,7 @@ const Contacts = () => {
             onClick={() => fileInputRef.current?.click()}
             style={{
               padding: '10px 16px',
-              backgroundColor: '#4CAF50',
+              backgroundColor: 'var(--color-primary)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -293,6 +893,137 @@ const Contacts = () => {
         </div>
       </div>
 
+      {/* Add Contact Modal */}
+      {showAddContact && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2>Add New Contact</h2>
+              <button
+                onClick={() => setShowAddContact(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px' }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <form onSubmit={handleAddContact}>
+              <input
+                type="text"
+                placeholder="First Name *"
+                value={newContact.firstName}
+                onChange={(e) => setNewContact({ ...newContact, firstName: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                value={newContact.lastName}
+                onChange={(e) => setNewContact({ ...newContact, lastName: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                }}
+              />
+              <input
+                type="email"
+                placeholder="Email *"
+                value={newContact.email}
+                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                }}
+              />
+              <input
+                type="tel"
+                placeholder="Phone"
+                value={newContact.phone}
+                onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginBottom: '20px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'var(--color-primary)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Create Contact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddContact(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'var(--color-border)',
+                    color: 'var(--color-text)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="ag-theme-alpine" style={{ height: 400, width: '100%' }}>
         <AgGridReact
           rowData={rowData}
@@ -302,6 +1033,7 @@ const Contacts = () => {
           quickFilterText={quickFilterText}
           onGridReady={(params) => setGridApi(params.api)}
           defaultColDef={{ flex: 1, minWidth: 100 }}
+          rowHeight={50}
         />
       </div>
     </div>
