@@ -515,16 +515,33 @@ const Contacts = () => {
               key={group.id}
               style={{
                 backgroundColor: '#e0e0e0',
-                padding: '4px 8px',
+                padding: '0 4px 0 8px',
                 borderRadius: '4px',
                 fontSize: '12px',
-                lineHeight: '29px',
                 height: '29px',
                 display: 'inline-flex',
                 alignItems: 'center',
+                gap: '4px',
               }}
             >
               {group.name}
+              <button
+                onClick={() => handleRemoveContactFromGroup(params.data.recipientid, group.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#888',
+                  padding: '0 2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '12px',
+                  lineHeight: 1,
+                }}
+                title="Remove from group"
+              >
+                ×
+              </button>
             </span>
           ))}
           <button
@@ -770,6 +787,21 @@ const Contacts = () => {
                                 <div style={{ fontWeight: '500' }}>{contact.name}</div>
                                 <div style={{ fontSize: '11px', color: '#999' }}>{contact.email}</div>
                               </div>
+                              <button
+                                onClick={() => handleRemoveContactFromGroup(contact.recipientid, group.id)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--color-error-text)',
+                                  padding: '2px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                }}
+                                title="Remove from group"
+                              >
+                                <TrashIcon size={14} />
+                              </button>
                             </div>
                           ))
                         )}
