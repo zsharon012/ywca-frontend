@@ -1,6 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getAuth } from 'firebase/auth';
 import { Calendar } from '@/components/ui/calendar';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function authFetch(path, options = {}) {
+    const auth = getAuth();
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${path}`, {
+        ...options,
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...(options.headers ?? {}),
+        },
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`);
+    return res.json();
+}
+
+// ─── DashboardCard ───────────────────────────────────────────────────────────
 
 function DashboardCard({ title, children }) {
     const [expanded, setExpanded] = useState(false)
@@ -42,57 +62,31 @@ function DashboardCard({ title, children }) {
     )
 }
 
+// ─── SummaryStats ────────────────────────────────────────────────────────────
+
 function SummaryStats() {
     const [pending, setPending] = useState(0);
-    const [read, setRead] = useState(0);
-    const [unread, setUnread] = useState(0);
+    const [sent, setSent] = useState(0);
     const [date, setDate] = useState(new Date());
 
     useEffect(() => {
-        const fetchPending = async () => {
-            try {
-                const auth = getAuth();
+        authFetch('/scheduledsends/pending')
+            .then(data => setPending(data.length))
+            .catch(err => console.error('Error fetching pending sends:', err));
 
-                if (!auth.currentUser) {
-                    return;
-                }
-                const token = await auth.currentUser.getIdToken();
-                
-                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/scheduledsends/pending`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch pending sends');
-                }
-
-                const data = await response.json();
-                setPending(data.length);
-            } catch (error) {
-                console.error('Error fetching pending sends:', error);
-            }
-        };
-
-        fetchPending();
-
-        // TODO: hardcoded data for read/unread
-        // fix after endpoints r done
-        setRead(42);
-        setUnread(15);
+        authFetch('/scheduledsends')
+            .then(data => setSent(data.filter(s => s.sent).length))
+            .catch(err => console.error('Error fetching sends:', err));
     }, []);
 
     return (
         <DashboardCard title="Summary and Statistics">
             <div className="flex items-center gap-[101px] m-4">
-
                 {/* Summary Box */}
                 <div className="w-[575px] h-[244px] rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 text-white">
                     <h3 className="text-xl font-bold mt-6 mb-4 ml-4">Summary</h3>
                     <div className="ml-4 space-y-1">
-                        <h3 className="text-xl font-bold">Unread: {Math.round(unread / (unread + read) * 100)}% ({unread} of {unread + read})</h3>
-                        <h3 className="text-xl font-bold">Read: {Math.round(read / (unread + read) * 100)}% ({read} of {unread + read})</h3>
+                        <h3 className="text-xl font-bold">Sent: {sent}</h3>
                         <h3 className="text-xl font-bold">Pending: {pending}</h3>
                     </div>
                 </div>
@@ -114,55 +108,45 @@ function SummaryStats() {
     )
 }
 
-const outboxRows = [ // Hardcoded data for outbox entries for now
-    {
-        id: 1,
-        recipients: ['District 30', 'Parents'],
-        subject: 'Spring fundraiser update',
-        status: 'Scheduled',
-        sentDate: '2026-04-15',
-        receivedDate: 'N/A',
-    },
-    {
-        id: 2,
-        recipients: ['Staff', 'Volunteers'],
-        subject: 'Weekly volunteer briefing',
-        status: 'Sent',
-        sentDate: '2026-04-10',
-        receivedDate: '2026-04-10',
-    },
-    {
-        id: 3,
-        recipients: ['District 30'],
-        subject: 'Event reminder: community meeting',
-        status: 'Unread',
-        sentDate: '2026-04-12',
-        receivedDate: '2026-04-12',
-    },
-    {
-        id: 4,
-        recipients: ['Parents'],
-        subject: 'Monthly newsletter',
-        status: 'Read',
-        sentDate: '2026-04-08',
-        receivedDate: '2026-04-08',
-    },
-]
+// ─── Outbox helpers ──────────────────────────────────────────────────────────
 
 function statusBadge(status) {
     const base = 'rounded-full px-3 py-1 text-xs font-semibold'
     switch (status) {
-        case 'Scheduled':
-            return `${base} bg-yellow-200 text-yellow-900`
-        case 'Sent':
-            return `${base} bg-blue-200 text-blue-900`
-        case 'Unread':
-            return `${base} bg-orange-200 text-orange-900`
-        case 'Read':
-            return `${base} bg-green-200 text-green-900`
-        default:
-            return `${base} bg-slate-200 text-slate-900`
+        case 'Scheduled': return `${base} bg-yellow-200 text-yellow-900`
+        case 'Sent':      return `${base} bg-blue-200 text-blue-900`
+        default:          return `${base} bg-slate-200 text-slate-900`
     }
+}
+
+/**
+ * Derive a display status from the scheduled-send record.
+ * Adjust the field names below if the API shape differs.
+ */
+function deriveStatus(send) {
+    return send.sent ? 'Sent' : 'Scheduled';
+}
+
+/**
+ * Shape a raw scheduled-send + its mail-object into an outbox row.
+ * Field names are inferred from the API docs; adjust as needed.
+ */
+function toOutboxRow(send, mailObject) {
+    const recipients = send.contactlistname
+        ? [send.contactlistname]
+        : send.contactgroupid
+            ? [send.contactgroupid]
+            : ['—'];
+
+    return {
+        id: send._id ?? send.mailobjectid,
+        recipients,
+        subject: send.subject ?? mailObject?.subject ?? '(no subject)',
+        status: deriveStatus(send),
+        sentDate: send.sendate
+            ? new Date(send.sendate).toISOString().slice(0, 10)
+            : 'N/A',
+    };
 }
 
 function normalizeRowValue(row, key) {
@@ -209,29 +193,52 @@ function sortRows(rows, sortConfig) {
 function filterRows(rows, selectedColumn, filterValue, quickFilterText) {
     const filteredValue = filterValue.trim().toLowerCase()
     const quickFilter = quickFilterText.trim().toLowerCase()
-
-    return rows.filter((row) => {
+    return rows.filter(row => {
         const cellValue = normalizeRowValue(row, selectedColumn).toLowerCase()
         const matchesColumnFilter = !filteredValue || cellValue.includes(filteredValue)
         const matchesQuickFilter = !quickFilter ||
-            normalizeRowValue(row, 'recipients').toLowerCase().includes(quickFilter) ||
-            normalizeRowValue(row, 'subject').toLowerCase().includes(quickFilter) ||
-            normalizeRowValue(row, 'status').toLowerCase().includes(quickFilter) ||
-            normalizeRowValue(row, 'sentDate').toLowerCase().includes(quickFilter) ||
-            normalizeRowValue(row, 'receivedDate').toLowerCase().includes(quickFilter)
-
+            ['recipients', 'subject', 'status', 'sentDate']
+                .some(k => normalizeRowValue(row, k).toLowerCase().includes(quickFilter))
         return matchesColumnFilter && matchesQuickFilter
     })
 }
 
+
+// ─── Outbox ──────────────────────────────────────────────────────────────────
+
 function Outbox() {
+    const [rows, setRows] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+
     const [selectedColumn, setSelectedColumn] = useState('recipients')
     const [filterValue, setFilterValue] = useState('')
     const [sortConfig, setSortConfig] = useState({ key: 'sentDate', direction: 'desc' })
     const [quickFilterText, setQuickFilterText] = useState('')
 
+    const loadOutbox = useCallback(async () => {
+        setLoading(true)
+        setError(null)
+        try {
+            // 1. Fetch all scheduled sends
+            const sends = await authFetch('/scheduledsends')
+
+            // 2. Shape into outbox rows (subject is already on send object)
+            const outboxRows = sends.map(send => toOutboxRow(send, null))
+
+            setRows(outboxRows)
+        } catch (err) {
+            console.error('Failed to load outbox:', err)
+            setError(err.message)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => { loadOutbox() }, [loadOutbox])
+
     const sortedFilteredRows = sortRows(
-        filterRows(outboxRows, selectedColumn, filterValue, quickFilterText),
+        filterRows(rows, selectedColumn, filterValue, quickFilterText),
         sortConfig
     )
 
@@ -275,7 +282,7 @@ function Outbox() {
                             <option value="subject">Subject</option>
                             <option value="status">Status</option>
                             <option value="sentDate">Sent Date</option>
-                            <option value="receivedDate">Received Date</option>
+
                         </select>
                         <input
                             type="text"
@@ -285,48 +292,58 @@ function Outbox() {
                             className="rounded border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
                         />
                     </div>
-                    <div className="text-sm text-slate-600">
-                        Sort by: <span className="font-semibold">{sortConfig.key}</span> ({sortConfig.direction})
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-slate-600">
+                            Sort by: <span className="font-semibold">{sortConfig.key}</span> ({sortConfig.direction})
+                        </span>
+                        <button
+                            type="button"
+                            onClick={loadOutbox}
+                            disabled={loading}
+                            className="rounded border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50"
+                        >
+                            {loading ? 'Loading…' : '↻ Refresh'}
+                        </button>
                     </div>
                 </div>
+
+                {/* Error banner */}
+                {error && (
+                    <div className="mb-3 rounded border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
+                        Failed to load outbox: {error}
+                    </div>
+                )}
+
+                {/* Table */}
                 <div className="w-full overflow-x-auto">
                     <table className="min-w-full border-collapse text-left text-sm">
                         <thead>
                             <tr className="border-b border-slate-300 text-slate-700">
-                                <th
-                                    className="cursor-pointer px-4 py-3"
-                                    onClick={() => handleSortChange('recipients')}
-                                >
-                                    Recipients{sortIndicator('recipients')}
-                                </th>
-                                <th
-                                    className="cursor-pointer px-4 py-3"
-                                    onClick={() => handleSortChange('subject')}
-                                >
-                                    Subject{sortIndicator('subject')}
-                                </th>
-                                <th
-                                    className="cursor-pointer px-4 py-3"
-                                    onClick={() => handleSortChange('status')}
-                                >
-                                    Status{sortIndicator('status')}
-                                </th>
-                                <th
-                                    className="cursor-pointer px-4 py-3"
-                                    onClick={() => handleSortChange('sentDate')}
-                                >
-                                    Sent Date{sortIndicator('sentDate')}
-                                </th>
-                                <th
-                                    className="cursor-pointer px-4 py-3"
-                                    onClick={() => handleSortChange('receivedDate')}
-                                >
-                                    Received Date{sortIndicator('receivedDate')}
-                                </th>
+                                {[
+                                    { key: 'recipients', label: 'Recipients' },
+                                    { key: 'subject', label: 'Subject' },
+                                    { key: 'status', label: 'Status' },
+                                    { key: 'sentDate', label: 'Sent Date' },
+                                ].map(col => (
+                                    <th
+                                        key={col.key}
+                                        className="cursor-pointer px-4 py-3"
+                                        onClick={() => handleSortChange(col.key)}
+                                    >
+                                        {col.label}{sortIndicator(col.key)}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedFilteredRows.map((row) => (
+                            {loading && (
+                                <tr>
+                                    <td colSpan="4" className="px-4 py-6 text-center text-sm text-slate-500">
+                                        Loading outbox…
+                                    </td>
+                                </tr>
+                            )}
+                            {!loading && sortedFilteredRows.map(row => (
                                 <tr key={row.id} className="border-b border-slate-200">
                                     <td className="px-4 py-3 align-top">
                                         <div className="flex flex-wrap gap-2">
@@ -345,12 +362,11 @@ function Outbox() {
                                         <span className={statusBadge(row.status)}>{row.status}</span>
                                     </td>
                                     <td className="px-4 py-3 align-top text-slate-900">{row.sentDate}</td>
-                                    <td className="px-4 py-3 align-top text-slate-900">{row.receivedDate}</td>
                                 </tr>
                             ))}
-                            {sortedFilteredRows.length === 0 && (
+                            {!loading && sortedFilteredRows.length === 0 && (
                                 <tr>
-                                    <td colSpan="5" className="px-4 py-6 text-center text-sm text-slate-500">
+                                    <td colSpan="4" className="px-4 py-6 text-center text-sm text-slate-500">
                                         No matching outbox entries.
                                     </td>
                                 </tr>
@@ -362,6 +378,8 @@ function Outbox() {
         </DashboardCard>
     )
 }
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
     return (
