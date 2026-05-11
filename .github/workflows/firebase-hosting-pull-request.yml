@@ -14,8 +14,7 @@ jobs:
         with:
           node-version: '20'
       - run: npm ci && npm run build
-        working-directory: ./ywca-frontend
-      - run: ls -la ywca-frontend/dist/
+      - run: ls -la dist/
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
