@@ -18,6 +18,7 @@ import NotFound from '@/pages/not-found/NotFound';
 import Dashboard from './pages/dashboard/Dashboard';
 import DraftTemplates from './pages/Templates/DraftTemplates';
 import ImageGallery from './pages/ImageGallery/ImageGallery';
+import ScheduledSends from './pages/scheduledsends/ScheduledSends';
 
 import './App.css';
 
@@ -32,6 +33,7 @@ export default function App() {
               <Route path='signuplinks' element={<SignUpLinks/>} />
               <Route path='contacts' element={<Contacts />} />
               <Route path='dashboard' element={<Dashboard />} />
+              <Route path='scheduledsends' element={<ScheduledSends />} />
               <Route path='templates' element={<DraftTemplates/>} />
               <Route path='ImageGallery' element={<ImageGallery/>} />
             </Route>

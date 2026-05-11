@@ -94,6 +94,12 @@ export default function NavBar() {
               Dashboard
             </NavLink>
             <NavLink
+              $isActive={location.pathname === '/scheduledsends'}
+              onClick={() => navigate('/scheduledsends')}
+            >
+              Scheduled Sends
+            </NavLink>
+            <NavLink
               $isActive={location.pathname === '/contacts'}
               onClick={() => navigate('/contacts')}
             >
