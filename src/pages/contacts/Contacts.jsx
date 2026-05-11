@@ -509,41 +509,45 @@ const Contacts = () => {
       field: 'groups',
       headerName: 'Groups',
       cellRenderer: (params) => (
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center', height: '100%' }}>
-          {params.value && params.value.map(group => (
-            <span
-              key={group.id}
-              style={{
-                backgroundColor: '#e0e0e0',
-                padding: '0 4px 0 8px',
-                borderRadius: '4px',
-                fontSize: '12px',
-                height: '29px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              {group.name}
-              <button
-                onClick={() => handleRemoveContactFromGroup(params.data.recipientid, group.id)}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start', height: '100%', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignContent: 'flex-start', maxHeight: '60px', overflowY: 'auto', overflowX: 'auto', flex: 1, paddingRight: '4px' }}>
+            {params.value && params.value.map(group => (
+              <span
+                key={group.id}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#888',
-                  padding: '0 2px',
-                  display: 'flex',
-                  alignItems: 'center',
+                  backgroundColor: '#e0e0e0',
+                  padding: '0 4px 0 8px',
+                  borderRadius: '4px',
                   fontSize: '12px',
-                  lineHeight: 1,
+                  height: '29px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
-                title="Remove from group"
               >
-                ×
-              </button>
-            </span>
-          ))}
+                {group.name}
+                <button
+                  onClick={() => handleRemoveContactFromGroup(params.data.recipientid, group.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#888',
+                    padding: '0 2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                  }}
+                  title="Remove from group"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
           <button
             onClick={() => setSelectedContactForGroup(params.data.recipientid)}
             style={{
@@ -558,6 +562,7 @@ const Contacts = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             +
