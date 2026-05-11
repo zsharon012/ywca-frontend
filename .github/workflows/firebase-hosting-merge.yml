@@ -19,4 +19,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_YWCA_DISC }}
           channelId: live
           projectId: ywca-disc
-          entryPoint: ywca-frontend
+          entryPoint: .
