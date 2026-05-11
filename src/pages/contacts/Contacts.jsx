@@ -1468,7 +1468,7 @@ const Contacts = () => {
             onClick={openEditGroupsModal}
             style={{
               padding: '10px 16px',
-              backgroundColor: 'var(--color-secondary, #5a8bf5)',
+              backgroundColor: 'var(--color-primary)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
