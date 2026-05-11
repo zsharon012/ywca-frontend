@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuth } from 'firebase/auth';
-import { Calendar } from '@/components/ui/calendar';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ function DashboardCard({ title, children }) {
 function SummaryStats() {
     const [pending, setPending] = useState(0);
     const [sent, setSent] = useState(0);
-    const [date, setDate] = useState(new Date());
+    const [events, setEvents] = useState([]);
 
     useEffect(() => {
         authFetch('/scheduledsends/pending')
@@ -75,15 +76,23 @@ function SummaryStats() {
             .catch(err => console.error('Error fetching pending sends:', err));
 
         authFetch('/scheduledsends')
-            .then(data => setSent(data.filter(s => s.sent).length))
+            .then(data => {
+                setSent(data.filter(s => s.sent).length);
+                setEvents(data.map(s => ({
+                    id: s.mailobjectid,
+                    title: s.subject,
+                    date: s.sendate,
+                    color: s.sent ? '#4ade80' : '#60a5fa',
+                })));
+            })
             .catch(err => console.error('Error fetching sends:', err));
     }, []);
 
     return (
         <DashboardCard title="Summary and Statistics">
-            <div className="flex items-center gap-[101px] m-4">
+            <div className="flex flex-row items-start gap-6 w-full p-2">
                 {/* Summary Box */}
-                <div className="w-[575px] h-[244px] rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 text-white">
+                <div className="flex-1 min-w-0 rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 text-white">
                     <h3 className="text-xl font-bold mt-6 mb-4 ml-4">Summary</h3>
                     <div className="ml-4 space-y-1">
                         <h3 className="text-xl font-bold">Sent: {sent}</h3>
@@ -93,14 +102,15 @@ function SummaryStats() {
 
                 {/* Calendar */}
                 <div
-                    className="h-[320px] rounded-[5px] border border-black bg-white shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] overflow-visible p-2"
+                    className="flex-1 min-w-0 rounded-[5px] border border-black bg-white shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] overflow-hidden p-2"
                     onClick={e => e.stopPropagation()}
                 >
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        className="w-full"
+                    <FullCalendar
+                        plugins={[dayGridPlugin]}
+                        initialView="dayGridMonth"
+                        events={events}
+                        height="auto"
+                        headerToolbar={{ left: 'prev,next', center: 'title', right: '' }}
                     />
                 </div>
             </div>
