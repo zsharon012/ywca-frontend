@@ -144,7 +144,7 @@ function toOutboxRow(send, mailObject) {
         subject: send.subject ?? mailObject?.subject ?? '(no subject)',
         status: deriveStatus(send),
         sentDate: send.sendate
-            ? new Date(send.sendate).toISOString().slice(0, 10)
+            ? new Date(send.sendate).toISOString()
             : 'N/A',
     };
 }
