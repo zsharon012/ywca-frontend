@@ -137,6 +137,10 @@ function toOutboxRow(send, mailObject) {
         : send.contactgroupid
             ? [send.contactgroupid]
             : ['—'];
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+        });
 
     return {
         id: send._id ?? send.mailobjectid,
@@ -144,7 +148,7 @@ function toOutboxRow(send, mailObject) {
         subject: send.subject ?? mailObject?.subject ?? '(no subject)',
         status: deriveStatus(send),
         sentDate: send.sendate
-            ? new Date(send.sendate).toISOString()
+            ? formatter.format(new Date(send.sendate))
             : 'N/A',
     };
 }
