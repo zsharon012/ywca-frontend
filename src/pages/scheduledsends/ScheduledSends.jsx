@@ -130,6 +130,42 @@ export default function ScheduledSends() {
     }
   };
 
+  const handleSendNow = async () => {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    if (!selectedTemplate || !selectedGroup) {
+      setErrorMessage('Please choose a template and a group before sending now.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const sendResult = await authFetch('/sendmail', {
+        method: 'POST',
+        body: {
+          templateid: selectedTemplate,
+          contactgroupids: [selectedGroup],
+        },
+      });
+
+      const results = sendResult?.data?.sendResults || [];
+      const successCount = results.filter((item) => !item.error).length;
+      const errorCount = results.filter((item) => item.error).length;
+      const summary = `${successCount} sent${errorCount ? `, ${errorCount} failed` : ''}`;
+
+      setStatusMessage(`Send now completed: ${summary}.`);
+      setErrorMessage(null);
+    } catch (error) {
+      console.error('Failed to send now:', error);
+      setErrorMessage(error.message || 'Unable to send now.');
+      setStatusMessage(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectedTemplateObj = templates.find(
     (template) => template.templateid === selectedTemplate || template.id === selectedTemplate
   );
@@ -211,13 +247,23 @@ export default function ScheduledSends() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center justify-center rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? 'Scheduling…' : 'Schedule Send'}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center justify-center rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Scheduling…' : 'Schedule Send'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSendNow}
+                disabled={loading}
+                className="inline-flex items-center justify-center rounded border border-slate-900 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Sending…' : 'Send Now'}
+              </button>
+            </div>
           </form>
 
           {(selectedTemplateObj || selectedGroupObj) && (
