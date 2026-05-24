@@ -160,14 +160,7 @@ export default function NavBar() {
           </Button.Primary>
         </>
       )}
-      {user && (
-      <NavLink
-              $isActive={location.pathname === '/signuplinks'}
-              onClick={() => navigate('/signuplinks')}
-            >
-              Create Sign Up Link
-      </NavLink>
-      )}
+      
       <LogoutModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
