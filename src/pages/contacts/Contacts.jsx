@@ -24,10 +24,7 @@ const Contacts = () => {
   const [showAddContact, setShowAddContact] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [showGroupManagement, setShowGroupManagement] = useState(false);
-  const [showEditGroupsModal, setShowEditGroupsModal] = useState(false);
-  const [editableGroups, setEditableGroups] = useState([]);
-  const [deletedGroupIds, setDeletedGroupIds] = useState([]);
-  const [newGroupNameForEdit, setNewGroupNameForEdit] = useState('');
+
   const [groupEditMessage, setGroupEditMessage] = useState(null);
   const [newContact, setNewContact] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const [newGroup, setNewGroup] = useState({ name: '', description: '' });
@@ -39,6 +36,9 @@ const Contacts = () => {
   const [groupMemberSaveError, setGroupMemberSaveError] = useState(null);
   const [groupMemberSaving, setGroupMemberSaving] = useState(false);
   const [contactGroupAssignments, setContactGroupAssignments] = useState({});
+  const [editingGroupId, setEditingGroupId] = useState(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+  const [editingGroupDescription, setEditingGroupDescription] = useState('');
   const fileInputRef = useRef(null);
 
   const applyFilter = useCallback(() => {
@@ -110,122 +110,6 @@ const Contacts = () => {
     } catch (error) {
       console.error("Error fetching groups:", error);
       setUpdateError("Failed to fetch groups");
-    }
-  };
-
-  const openEditGroupsModal = () => {
-    setEditableGroups(groups.map((group) => ({
-      ...group,
-      tempId: group.id,
-      editedName: group.name || '',
-      editedDescription: group.description || '',
-    })));
-    setDeletedGroupIds([]);
-    setNewGroupNameForEdit('');
-    setGroupEditMessage(null);
-    setShowEditGroupsModal(true);
-  };
-
-  const handleEditGroupNameChange = (groupKey, newName) => {
-    setEditableGroups((current) => current.map((group) =>
-      group.tempId === groupKey ? { ...group, editedName: newName } : group
-    ));
-  };
-
-  const handleDeleteGroupFromEdit = (groupKey) => {
-    setEditableGroups((current) => {
-      const groupToDelete = current.find((group) => group.tempId === groupKey);
-      if (groupToDelete?.id) {
-        setDeletedGroupIds((ids) => [...ids, groupToDelete.id]);
-      }
-      return current.filter((group) => group.tempId !== groupKey);
-    });
-  };
-
-  const handleAddNewGroupInEdit = () => {
-    if (!newGroupNameForEdit.trim()) {
-      return;
-    }
-
-    const tempId = `new-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setEditableGroups((current) => [
-      ...current,
-      {
-        id: null,
-        tempId,
-        editedName: newGroupNameForEdit.trim(),
-        editedDescription: '',
-        isNew: true,
-      },
-    ]);
-    setNewGroupNameForEdit('');
-  };
-
-  const handleSaveGroupChanges = async () => {
-    try {
-      const auth = getAuth();
-      const token = await auth.currentUser.getIdToken();
-
-      // Delete removed groups first
-      for (const groupId of deletedGroupIds) {
-        await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists/${groupId}`, {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-
-      // Update existing groups
-      const renamePromises = editableGroups
-        .filter((group) => group.id && group.editedName !== group.name)
-        .map((group) =>
-          fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists/${group.id}`, {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: group.editedName,
-              description: group.editedDescription || '',
-            }),
-          })
-        );
-
-      const createPromises = editableGroups
-        .filter((group) => group.isNew)
-        .map((group) =>
-          fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: group.editedName,
-              description: group.editedDescription || '',
-            }),
-          })
-        );
-
-      const results = await Promise.all([...renamePromises, ...createPromises]);
-      const failed = results.some((response) => !response.ok);
-      if (failed) {
-        throw new Error('Failed to save group changes');
-      }
-
-      setShowEditGroupsModal(false);
-      fetchGroups();
-      fetchData();
-      setGroupEditMessage('Group changes saved successfully');
-      setTimeout(() => setGroupEditMessage(null), 4000);
-    } catch (error) {
-      console.error('Save group changes error:', error);
-      setUpdateError(error.message || 'Failed to save group changes');
     }
   };
 
@@ -327,6 +211,61 @@ const Contacts = () => {
         return name.includes(query) || email.includes(query);
       })
     : [];
+
+  const startEditingGroup = (group) => {
+    setEditingGroupId(group.id);
+    setEditingGroupName(group.name || '');
+    setEditingGroupDescription(group.description || '');
+  };
+
+  const cancelEditingGroup = () => {
+    setEditingGroupId(null);
+    setEditingGroupName('');
+    setEditingGroupDescription('');
+  };
+
+  const saveEditingGroup = async () => {
+    if (!editingGroupId || !editingGroupName.trim()) {
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/contacts/lists/${editingGroupId}`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: editingGroupName.trim(),
+            description: editingGroupDescription.trim(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to save group');
+      }
+
+      setUploadStatus('success');
+      setUploadMessage('Group updated successfully');
+      cancelEditingGroup();
+      fetchGroups();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Save group error:', error);
+      setUpdateError(error.message || 'Failed to save group');
+    }
+  };
 
   // Fetch initial contacts and groups
   useEffect(() => {
@@ -503,6 +442,82 @@ const Contacts = () => {
     } catch (error) {
       console.error('Add group error:', error);
       setUpdateError(error.message || 'Failed to create group');
+    }
+  };
+
+  const handleDuplicateGroup = async (groupId) => {
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      // Get the group to duplicate
+      const groupToDuplicate = groups.find(g => g.id === groupId);
+      if (!groupToDuplicate) {
+        throw new Error('Group not found');
+      }
+
+      // Get all members in the group
+      const groupMembers = rowData.filter(contact =>
+        (contact.groups || []).some(g => g.id === groupId)
+      );
+
+      // Create new group with "Copy of" prefix
+      const newGroupName = `Copy of ${groupToDuplicate.name}`;
+      const createGroupResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/lists`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newGroupName,
+          description: groupToDuplicate.description || '',
+        }),
+      });
+
+      if (!createGroupResponse.ok) {
+        throw new Error('Failed to create duplicate group');
+      }
+
+      const newGroup = await createGroupResponse.json();
+      const newGroupId = newGroup.data.id;
+
+      // Add all members from original group to new group
+      const addMemberRequests = groupMembers.map(contact =>
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/contacts/members/add`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            recipientId: contact.recipientid,
+            contactlistID: newGroupId,
+          }),
+        })
+      );
+
+      if (addMemberRequests.length > 0) {
+        const results = await Promise.all(addMemberRequests);
+        const failed = results.some(response => !response.ok);
+        if (failed) {
+          throw new Error('Failed to add some members to duplicate group');
+        }
+      }
+
+      setUploadStatus('success');
+      setUploadMessage(`Group duplicated as "${newGroupName}"`);
+      fetchGroups();
+      fetchData();
+      setTimeout(() => {
+        setUploadStatus(null);
+        setUploadMessage('');
+      }, 4000);
+    } catch (error) {
+      console.error('Duplicate group error:', error);
+      setUpdateError(error.message || 'Failed to duplicate group');
     }
   };
 
@@ -977,60 +992,168 @@ const Contacts = () => {
                       border: '1px solid #eee',
                     }}
                   >
-                    {/* Group Header */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedGroup(isExpanded ? null : group.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          setSelectedGroup(isExpanded ? null : group.id);
-                        }
-                      }}
-                      style={{
-                        padding: '10px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 'bold' }}>{group.name}</div>
-                        <div style={{ fontSize: '12px', color: '#999' }}>{parseInt(group.membercount) || 0} members</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openGroupMembersModal(group); }}
+                    {/* Group Header - Edit Mode */}
+                    {editingGroupId === group.id ? (
+                      <div style={{ padding: '10px' }}>
+                        <input
+                          type="text"
+                          value={editingGroupName}
+                          onChange={(e) => setEditingGroupName(e.target.value)}
                           style={{
-                            background: 'var(--color-primary-light)',
-                            color: 'var(--color-primary-text)',
-                            border: '1px solid var(--color-primary-border)',
+                            width: '100%',
+                            padding: '8px',
+                            marginBottom: '8px',
+                            border: '1px solid #ccc',
                             borderRadius: '4px',
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
+                            boxSizing: 'border-box',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
                           }}
-                        >
-                          Edit members
-                        </button>
-                        <span style={{ fontSize: '12px', color: '#999' }}>{isExpanded ? '▲' : '▼'}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                          placeholder="Group name"
+                          autoFocus
+                        />
+                        <textarea
+                          value={editingGroupDescription}
+                          onChange={(e) => setEditingGroupDescription(e.target.value)}
                           style={{
-                            background: 'none',
-                            border: 'none',
+                            width: '100%',
+                            padding: '8px',
+                            marginBottom: '8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                            fontSize: '12px',
+                            minHeight: '60px',
+                            resize: 'vertical',
+                          }}
+                          placeholder="Description (optional)"
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={saveEditingGroup}
+                            style={{
+                              flex: 1,
+                              padding: '6px',
+                              backgroundColor: 'var(--color-primary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                            }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditingGroup}
+                            style={{
+                              flex: 1,
+                              padding: '6px',
+                              backgroundColor: 'var(--color-border)',
+                              color: 'var(--color-text)',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Group Header - View Mode */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSelectedGroup(isExpanded ? null : group.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              setSelectedGroup(isExpanded ? null : group.id);
+                            }
+                          }}
+                          style={{
+                            padding: '10px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
                             cursor: 'pointer',
-                            color: 'var(--color-error-text)',
                           }}
                         >
-                          <TrashIcon size={16} />
-                        </button>
-                      </div>
-                    </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div 
+                              style={{ 
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                backgroundColor: 'transparent',
+                                transition: 'background-color 0.2s',
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#e8e8e8'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditingGroup(group);
+                              }}
+                              title="Click to edit group name"
+                            >
+                              {group.name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#999' }}>{parseInt(group.membercount) || 0} members</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openGroupMembersModal(group); }}
+                              style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary-text)',
+                                border: '1px solid var(--color-primary-border)',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                              }}
+                            >
+                              Edit members
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDuplicateGroup(group.id); }}
+                              style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary-text)',
+                                border: '1px solid var(--color-primary-border)',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                              }}
+                              title="Duplicate this group"
+                            >
+                              Duplicate
+                            </button>
+                            <span style={{ fontSize: '12px', color: '#999' }}>{isExpanded ? '▲' : '▼'}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--color-error-text)',
+                              }}
+                            >
+                              <TrashIcon size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     {/* Expanded Member List */}
-                    {isExpanded && (
+                    {isExpanded && editingGroupId !== group.id && (
                       <div style={{ borderTop: '1px solid #eee', padding: '8px 10px' }}>
                         {groupContacts.length === 0 ? (
                           <div style={{ fontSize: '13px', color: '#999' }}>No members yet</div>
@@ -1266,133 +1389,6 @@ const Contacts = () => {
         </div>
       )}
 
-      {/* Edit Groups Modal */}
-      {showEditGroupsModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1001,
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            width: '100%',
-            maxWidth: '600px',
-            maxHeight: '85vh',
-            overflowY: 'auto',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2>Edit Groups</h2>
-              <button
-                onClick={() => setShowEditGroupsModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label htmlFor="new-group-name-edit" style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Add new group</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                  id="new-group-name-edit"
-                  type="text"
-                  placeholder="New group name"
-                  value={newGroupNameForEdit}
-                  onChange={(e) => setNewGroupNameForEdit(e.target.value)}
-                  style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddNewGroupInEdit}
-                  style={{
-                    padding: '10px 16px',
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              {editableGroups.length === 0 ? (
-                <p style={{ color: '#777' }}>No groups to edit yet.</p>
-              ) : (
-                editableGroups.map((group) => (
-                  <div key={group.tempId} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-                    <input
-                      type="text"
-                      value={group.editedName}
-                      onChange={(e) => handleEditGroupNameChange(group.tempId, e.target.value)}
-                      style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteGroupFromEdit(group.tempId)}
-                      style={{
-                        padding: '10px 12px',
-                        backgroundColor: 'var(--color-error-text)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setShowEditGroupsModal(false)}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: 'var(--color-border)',
-                  color: 'var(--color-text)',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveGroupChanges}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: 'var(--color-primary)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div style={{ display: 'flex', gap: '20px', marginBottom: '10px', marginTop: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
           <input
@@ -1462,22 +1458,6 @@ const Contacts = () => {
             }}
           >
             Manage Groups
-          </button>
-
-          <button
-            onClick={openEditGroupsModal}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: 'var(--color-primary)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '500',
-            }}
-          >
-            Edit Groups
           </button>
 
           {/* CSV Upload Button */}

@@ -12,7 +12,6 @@ import SignUpLinks from '@/pages/account/SignUpLinks';
 import RequestPasswordReset from '@/pages/account/RequestPasswordReset';
 import ResetPassword from '@/pages/account/ResetPassword';
 import SignUp from '@/pages/account/SignUp';
-import Home from '@/pages/home/Home';
 import Contacts from '@/pages/contacts/Contacts';
 import NotFound from '@/pages/not-found/NotFound';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -29,7 +28,7 @@ export default function App() {
         <Routes>
           <Route path='/' element={<NavLayout />}>
             <Route element={<PrivateRoute />}>
-              <Route index element={<Home />} />
+              <Route index element={<Dashboard />} />
               <Route path='signuplinks' element={<SignUpLinks/>} />
               <Route path='contacts' element={<Contacts />} />
               <Route path='dashboard' element={<Dashboard />} />

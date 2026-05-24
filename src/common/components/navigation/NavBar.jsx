@@ -82,12 +82,6 @@ export default function NavBar() {
         {user && (
           <>
             <NavLink
-              $isActive={location.pathname === '/signuplinks'}
-              onClick={() => navigate('/signuplinks')}
-            >
-              Create Sign Up Link
-            </NavLink>
-            <NavLink
               $isActive={location.pathname === '/dashboard'}
               onClick={() => navigate('/dashboard')}
             >
@@ -124,13 +118,19 @@ export default function NavBar() {
         <Button.Secondary onClick={handleLogoutClick}>Log Out</Button.Secondary>
       ) : (
         <>
-          <Button.Primary onClick={() => navigate('/signup')}>
-            Sign Up
-          </Button.Primary>
-          <Button.Secondary onClick={() => navigate('/login')}>
+          
+          <Button.Primary onClick={() => navigate('/login')}>
             Login
-          </Button.Secondary>
+          </Button.Primary>
         </>
+      )}
+      {user && (
+      <NavLink
+              $isActive={location.pathname === '/signuplinks'}
+              onClick={() => navigate('/signuplinks')}
+            >
+              Create Sign Up Link
+      </NavLink>
       )}
       <LogoutModal
         isOpen={isModalOpen}

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import GoogleButton from '@/common/components/atoms/GoogleButton';
 import { Form, FormTitle } from '@/common/components/form/Form';
@@ -13,8 +13,11 @@ import { StyledPage } from './styles';
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidatingToken, setIsValidatingToken] = useState(true);
+  const [signupToken, setSignupToken] = useState('');
   const { googleAuth } = useUser();
 
   const [formState, setFormState] = useState({
@@ -24,6 +27,46 @@ export default function SignUp() {
     password: '',
     username: '',
   });
+
+  // Validate signup token on component mount
+  useEffect(() => {
+    const validateToken = async () => {
+      const token = searchParams.get('token');
+      
+      if (!token) {
+        setError('No signup token provided. Please use a valid signup link.');
+        setIsValidatingToken(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/signuplinks/validate/${token}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Invalid or expired signup token');
+        }
+
+        setSignupToken(token);
+        setError('');
+      } catch (err) {
+        console.error('Token validation error:', err);
+        setError(err.message || 'Invalid or expired signup token');
+      } finally {
+        setIsValidatingToken(false);
+      }
+    };
+
+    validateToken();
+  }, [searchParams]);
 
   const handleChangeFirstname = (e) => {
     setFormState({ ...formState, firstname: e.target.value });
@@ -77,6 +120,7 @@ export default function SignUp() {
             username: formState.username || undefined,
             firstname: formState.firstname || undefined,
             lastname: formState.lastname || undefined,
+            signupToken: signupToken,
           }),
         }
       );
@@ -100,22 +144,39 @@ export default function SignUp() {
     }
   };
 
+  if (isValidatingToken) {
+    return (
+      <StyledPage>
+        <Form>
+          <FormTitle>Validating signup link...</FormTitle>
+        </Form>
+      </StyledPage>
+    );
+  }
+
   return (
     <StyledPage>
       <Form onSubmit={handleSubmit}>
         <FormTitle>Create an account</FormTitle>
         {error && <RedSpan>{error}</RedSpan>}
+        {signupToken && !error && (
+          <div style={{ color: 'green', marginBottom: '10px', fontSize: '14px' }}>
+            ✓ Signup link verified. You can now create your account.
+          </div>
+        )}
         <Input.Text
           title='First name'
           placeholder='John'
           value={formState.firstname}
           onChange={handleChangeFirstname}
+          disabled={!signupToken || !!error}
         />
         <Input.Text
           title='Last name'
           placeholder='Smith'
           value={formState.lastname}
           onChange={handleChangeLastname}
+          disabled={!signupToken || !!error}
         />
         <Input.Text
           title='Email'
@@ -123,25 +184,28 @@ export default function SignUp() {
           value={formState.email}
           onChange={handleChangeEmail}
           required
+          disabled={!signupToken || !!error}
         />
         <Input.Text
           title='Username'
           placeholder='johnsmith'
           value={formState.username}
           onChange={handleChangeUsername}
+          disabled={!signupToken || !!error}
         />
         <Input.Password
           title='Password'
           value={formState.password}
           onChange={handleChangePassword}
           required
+          disabled={!signupToken || !!error}
         />
-        <SubmitButton onClick={() => {}} disabled={isLoading}>
+        <SubmitButton onClick={() => {}} disabled={isLoading || !signupToken || !!error}>
           {isLoading ? 'Creating account...' : 'Sign Up'}
         </SubmitButton>
         <GoogleButton
           onClick={handleGoogleSignup}
-          isLoading={isLoading}
+          isLoading={isLoading || !signupToken || !!error}
           text='Sign up with Google'
         />
       </Form>
