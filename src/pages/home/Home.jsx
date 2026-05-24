@@ -3,7 +3,6 @@ import React, { useContext } from 'react';
 import styled from 'styled-components';
 
 import { Subtitle, Title } from '@/common/components/atoms/Text';
-import UsersList from '@/common/components/users/UsersList';
 import { UserContext } from '@/common/contexts/UserContext';
 
 const TextContainer = styled.div`
@@ -30,7 +29,6 @@ export default function Home() {
         <Title>Home Page</Title>
         <Subtitle>Welcome, {user?.firstname || 'User'}!</Subtitle>
       </TextContainer>
-      <UsersList />
     </HomePage>
   );
 }
