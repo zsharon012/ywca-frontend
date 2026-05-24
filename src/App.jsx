@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import {
   PrivateRoute,
@@ -29,7 +29,7 @@ export default function App() {
         <Routes>
           <Route path='/' element={<NavLayout />}>
             <Route element={<PrivateRoute />}>
-              <Route index element={<Home />} />
+              <Route index element={<Navigate to='/dashboard' replace />} />
               <Route path='signuplinks' element={<SignUpLinks/>} />
               <Route path='contacts' element={<Contacts />} />
               <Route path='dashboard' element={<Dashboard />} />
