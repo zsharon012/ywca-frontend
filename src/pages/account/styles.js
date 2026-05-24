@@ -52,7 +52,8 @@ export const SubHeader = styled.p`
 export const LinkWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  width: 600px;
+  width: 100%;
+  max-width: 650px;
 `;
 
 export const LinkContainer = styled.div`
@@ -71,6 +72,10 @@ export const LinkText = styled.div`
   font-weight: 600;
   letter-spacing: 0.05em;
   color: #333;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 `;
 
 export const CopyButton = styled.button`
