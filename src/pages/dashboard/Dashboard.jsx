@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { getAuth } from 'firebase/auth';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -65,10 +67,67 @@ function DashboardCard({ title, children }) {
 
 // ─── SummaryStats ────────────────────────────────────────────────────────────
 
+function CalendarPopover({ popover, position, onSave, onDelete, onClose }) {
+    const [title, setTitle] = useState(popover.title);
+
+    useEffect(() => {
+        const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [onClose]);
+
+    return createPortal(
+        <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={onClose} />
+            <div
+                className="bg-white border border-slate-300 rounded-lg shadow-xl p-3 flex flex-col gap-2 min-w-[200px]"
+                style={{ position: 'fixed', zIndex: 50, top: position.y, left: position.x }}
+                onClick={e => e.stopPropagation()}
+            >
+                <p className="text-xs text-slate-500 font-medium">{popover.date}</p>
+                <input
+                    autoFocus
+                    className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    placeholder="Event title"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onSave(title); }}
+                />
+                <div className="flex gap-2">
+                    <button
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded px-2 py-1"
+                        onClick={() => onSave(title)}
+                    >
+                        Save
+                    </button>
+                    {onDelete && (
+                        <button
+                            className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded px-2 py-1"
+                            onClick={onDelete}
+                        >
+                            Delete
+                        </button>
+                    )}
+                    <button
+                        className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded px-2 py-1"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </>,
+        document.body
+    );
+}
+
 function SummaryStats() {
     const [pending, setPending] = useState(0);
     const [sent, setSent] = useState(0);
-    const [events, setEvents] = useState([]);
+    const [scheduledEvents, setScheduledEvents] = useState([]);
+    const [manualEvents, setManualEvents] = useState([]);
+    const [popover, setPopover] = useState(null);
+    const popoverPos = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
         authFetch('/scheduledsends/pending')
@@ -78,22 +137,49 @@ function SummaryStats() {
         authFetch('/scheduledsends')
             .then(data => {
                 setSent(data.filter(s => s.sent).length);
-                setEvents(data.map(s => ({
+                setScheduledEvents(data.map(s => ({
                     id: s.mailobjectid,
                     title: s.subject,
                     date: s.sendate,
                     color: s.sent ? '#4ade80' : '#60a5fa',
+                    editable: false,
                 })));
             })
             .catch(err => console.error('Error fetching sends:', err));
     }, []);
+
+    const handleDateClick = (info) => {
+        popoverPos.current = { x: info.jsEvent.clientX + 8, y: info.jsEvent.clientY + 8 };
+        setPopover({ mode: 'new', date: info.dateStr, title: '' });
+    };
+
+    const handleEventClick = (info) => {
+        if (!info.event.id.startsWith('manual-')) return;
+        popoverPos.current = { x: info.jsEvent.clientX + 8, y: info.jsEvent.clientY + 8 };
+        setPopover({ mode: 'edit', date: info.event.startStr, eventId: info.event.id, title: info.event.title });
+    };
+
+    const handleSave = (title) => {
+        if (!title.trim()) return;
+        if (popover.mode === 'new') {
+            setManualEvents(prev => [...prev, { id: `manual-${Date.now()}`, title: title.trim(), date: popover.date, color: '#f97316' }]);
+        } else {
+            setManualEvents(prev => prev.map(e => e.id === popover.eventId ? { ...e, title: title.trim() } : e));
+        }
+        setPopover(null);
+    };
+
+    const handleDelete = () => {
+        setManualEvents(prev => prev.filter(e => e.id !== popover.eventId));
+        setPopover(null);
+    };
 
     return (
         <DashboardCard title="Summary and Statistics">
             <div className="flex flex-row items-start gap-6 w-full p-2">
                 {/* Summary Box */}
                 <div className="flex-1 min-w-0 rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 text-white">
-                    <h3 className="text-xl font-bold mt-6 mb-4 ml-4">Summary</h3>
+                    <h3 className="text-2xl font-bold mt-6 mb-4 ml-4">Summary</h3>
                     <div className="ml-4 space-y-1">
                         <h3 className="text-xl font-bold">Sent: {sent}</h3>
                         <h3 className="text-xl font-bold">Pending: {pending}</h3>
@@ -102,18 +188,43 @@ function SummaryStats() {
 
                 {/* Calendar */}
                 <div
-                    className="flex-1 min-w-0 rounded-[5px] border border-black bg-white shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] overflow-hidden p-2"
+                    className="flex-4 min-w-0 rounded-[5px] border border-black bg-white shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] overflow-hidden p-2"
                     onClick={e => e.stopPropagation()}
                 >
+                    <style>{`
+                        .fc-daygrid-day { position: relative; }
+                        .fc-daygrid-day:hover::after {
+                            content: '+ add event';
+                            position: absolute;
+                            bottom: 4px;
+                            right: 6px;
+                            font-size: 11px;
+                            color: #9ca3af;
+                            pointer-events: none;
+                        }
+                        ${popover ? `.fc-day[data-date="${popover.date}"] { background-color: rgba(45, 212, 191, 0.35) !important; }` : ''}
+                    `}</style>
                     <FullCalendar
-                        plugins={[dayGridPlugin]}
+                        plugins={[dayGridPlugin, interactionPlugin]}
                         initialView="dayGridMonth"
-                        events={events}
+                        events={[...scheduledEvents, ...manualEvents]}
                         height="auto"
                         headerToolbar={{ left: 'prev,next', center: 'title', right: '' }}
+                        dateClick={handleDateClick}
+                        eventClick={handleEventClick}
                     />
                 </div>
             </div>
+
+            {popover && (
+                <CalendarPopover
+                    popover={popover}
+                    position={popoverPos.current}
+                    onSave={handleSave}
+                    onDelete={popover.mode === 'edit' ? handleDelete : null}
+                    onClose={() => setPopover(null)}
+                />
+            )}
         </DashboardCard>
     )
 }

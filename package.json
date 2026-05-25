@@ -15,6 +15,7 @@
     "@emotion/styled": "^11.14.1",
     "@fontsource-variable/geist": "^5.2.8",
     "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
     "@mui/icons-material": "^9.0.0",
     "@mui/material": "^9.0.0",
