@@ -617,37 +617,88 @@ const Contacts = () => {
   };
 
   const parseCSV = (text) => {
-    const lines = text.trim().split('\n');
+    // Strip UTF-8 BOM if present, normalize CRLF → LF
+    const cleaned = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = cleaned.trim().split('\n');
+
     if (lines.length < 2) {
       throw new Error('CSV file is empty');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // RFC 4180-compliant field parser: handles "field,with,commas" and "field with ""quotes"""
+    const parseLine = (line) => {
+      const fields = [];
+      let i = 0;
+      while (i < line.length) {
+        if (line[i] === '"') {
+          // Quoted field
+          let field = '';
+          i++; // skip opening quote
+          while (i < line.length) {
+            if (line[i] === '"' && line[i + 1] === '"') {
+              field += '"';
+              i += 2;
+            } else if (line[i] === '"') {
+              i++; // skip closing quote
+              break;
+            } else {
+              field += line[i++];
+            }
+          }
+          fields.push(field);
+          if (line[i] === ',') i++; // skip comma after closing quote
+        } else {
+          // Unquoted field
+          const end = line.indexOf(',', i);
+          if (end === -1) {
+            fields.push(line.slice(i));
+            break;
+          } else {
+            fields.push(line.slice(i, end));
+            i = end + 1;
+          }
+        }
+      }
+      return fields;
+    };
 
-    // validate required columns exist
-    const required = ['name', 'email', 'phone'];
+    const headers = parseLine(lines[0]).map(h => h.trim().toLowerCase());
+
+    const required = ['name', 'email'];
     const missing = required.filter(r => !headers.includes(r));
     if (missing.length > 0) {
       throw new Error(`CSV missing required columns: ${missing.join(', ')}`);
     }
 
+    const hasGroupsColumn = headers.includes('groups');
+
     return lines.slice(1).map((line, index) => {
       if (!line.trim()) return null;
-      const values = line.split(',').map(v => v.trim());
+      const values = parseLine(line);
       const row = {};
       headers.forEach((h, i) => {
-        row[h] = values[i] || '';
+        row[h] = (values[i] || '').trim();
       });
 
       if (!row.name || !row.email) {
         throw new Error(`Row ${index + 2}: Name and email are required`);
       }
 
-      return {
+      const contact = {
         name: row.name,
         email: row.email,
         phone: row.phone || '',
+        groupNames: [],
       };
+
+      if (hasGroupsColumn && row.groups) {
+        contact.groupNames = row.groups
+          .split(',')
+          .map(g => g.trim())
+          .filter(g => g.length > 0);
+      }
+
+      return contact;
     }).filter(Boolean);
   };
 
