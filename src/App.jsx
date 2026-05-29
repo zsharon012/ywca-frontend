@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import {
   PrivateRoute,
@@ -12,12 +12,12 @@ import SignUpLinks from '@/pages/account/SignUpLinks';
 import RequestPasswordReset from '@/pages/account/RequestPasswordReset';
 import ResetPassword from '@/pages/account/ResetPassword';
 import SignUp from '@/pages/account/SignUp';
-import Home from '@/pages/home/Home';
 import Contacts from '@/pages/contacts/Contacts';
 import NotFound from '@/pages/not-found/NotFound';
 import Dashboard from './pages/dashboard/Dashboard';
 import DraftTemplates from './pages/Templates/DraftTemplates';
 import ImageGallery from './pages/ImageGallery/ImageGallery';
+import ScheduledSends from './pages/scheduledsends/ScheduledSends';
 
 import './App.css';
 
@@ -28,10 +28,11 @@ export default function App() {
         <Routes>
           <Route path='/' element={<NavLayout />}>
             <Route element={<PrivateRoute />}>
-              <Route index element={<Home />} />
+              <Route index element={<Navigate to='/dashboard' replace />} />
               <Route path='signuplinks' element={<SignUpLinks/>} />
               <Route path='contacts' element={<Contacts />} />
               <Route path='dashboard' element={<Dashboard />} />
+              <Route path='scheduledsends' element={<ScheduledSends />} />
               <Route path='templates' element={<DraftTemplates/>} />
               <Route path='ImageGallery' element={<ImageGallery/>} />
             </Route>

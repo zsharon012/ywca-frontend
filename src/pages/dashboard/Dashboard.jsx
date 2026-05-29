@@ -5,6 +5,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
+import { Calendar } from '@/components/ui/calendar';
+import { Trash2 as TrashIcon } from 'lucide-react';
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 async function authFetch(path, options = {}) {
@@ -258,6 +260,10 @@ function toOutboxRow(send, mailObject) {
         : send.contactgroupid
             ? [send.contactgroupid]
             : ['—'];
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+        });
 
     return {
         id: send._id ?? send.mailobjectid,
@@ -265,7 +271,7 @@ function toOutboxRow(send, mailObject) {
         subject: send.subject ?? mailObject?.subject ?? '(no subject)',
         status: deriveStatus(send),
         sentDate: send.sendate
-            ? new Date(send.sendate).toISOString().slice(0, 10)
+            ? formatter.format(new Date(send.sendate))
             : 'N/A',
     };
 }
@@ -378,7 +384,25 @@ function Outbox() {
     const sortIndicator = (key) => {
         if (sortConfig.key !== key) return ''
         return sortConfig.direction === 'asc' ? ' ▲' : ' ▼'
-    }
+    };
+
+    const handleDeleteScheduledSend = async (mailobjectid) => {
+        if (!window.confirm('Are you sure you want to delete this scheduled send?')) {
+            return;
+        }
+
+        try {
+            await authFetch(`/scheduledsends/${mailobjectid}`, {
+                method: 'DELETE',
+            });
+
+            // Remove the deleted item from the rows state
+            setRows(prevRows => prevRows.filter(row => row.id !== mailobjectid));
+        } catch (error) {
+            console.error('Delete scheduled send error:', error);
+            setError('Failed to delete scheduled send');
+        }
+    };
 
     return (
         <DashboardCard title="Outbox">
@@ -454,6 +478,7 @@ function Outbox() {
                                         {col.label}{sortIndicator(col.key)}
                                     </th>
                                 ))}
+                    
                             </tr>
                         </thead>
                         <tbody>
@@ -483,7 +508,22 @@ function Outbox() {
                                         <span className={statusBadge(row.status)}>{row.status}</span>
                                     </td>
                                     <td className="px-4 py-3 align-top text-slate-900">{row.sentDate}</td>
+                                    <td className="px-4 py-3 align-top">
+                                        <button
+                                            onClick={() => handleDeleteScheduledSend(row.id)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'var(--color-error-text)',
+                                        }}
+                                            title="Delete scheduled send"
+                                        >
+                                            <TrashIcon size={16} />
+                                        </button>
+                                    </td>
                                 </tr>
+
                             ))}
                             {!loading && sortedFilteredRows.length === 0 && (
                                 <tr>

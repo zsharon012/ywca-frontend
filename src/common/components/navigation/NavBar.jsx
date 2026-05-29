@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import { Button } from '@/common/components/atoms/Button';
 import { useUser } from '@/common/contexts/UserContext';
 import logo from '@/assets/logo.png';
+import { Icon } from '@/assets/icons/icons';
 
 import LogoutModal from './LogoutModal';
 
@@ -21,6 +22,12 @@ const LeftAligned = styled.div`
   flex: 1;
   display: flex;
   gap: 10px;
+`;
+
+const RightAligned = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
 `;
 
 const LogoImage = styled.img`
@@ -41,6 +48,26 @@ const NavLink = styled.button`
   text-decoration: ${({ $isActive }) => $isActive ? 'underline' : 'none'};
   text-underline-offset: 5px;
   font-weight: ${({ $isActive }) => $isActive ? 'bold' : 'normal'};
+
+  &:hover {
+    background-color: #f0f0f0;
+  }
+`;
+
+const IconButton = styled.button`
+  background: none;
+  border: none;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 
   &:hover {
     background-color: #f0f0f0;
@@ -82,28 +109,28 @@ export default function NavBar() {
         {user && (
           <>
             <NavLink
-              $isActive={location.pathname === '/signuplinks'}
-              onClick={() => navigate('/signuplinks')}
-            >
-              Create Sign Up Link
-            </NavLink>
-            <NavLink
               $isActive={location.pathname === '/dashboard'}
               onClick={() => navigate('/dashboard')}
             >
               Dashboard
             </NavLink>
             <NavLink
-              $isActive={location.pathname === '/contacts'}
-              onClick={() => navigate('/contacts')}
+              $isActive={location.pathname === '/scheduledsends'}
+              onClick={() => navigate('/scheduledsends')}
             >
-              Contacts
+              Scheduled Sends
             </NavLink>
             <NavLink
               $isActive={location.pathname === '/templates'}
               onClick={() => navigate('/templates')}
             >
               Templates
+            </NavLink>
+            <NavLink
+              $isActive={location.pathname === '/contacts'}
+              onClick={() => navigate('/contacts')}
+            >
+              Contacts
             </NavLink>
             <NavLink
               $isActive={location.pathname === '/ImageGallery'}
@@ -115,17 +142,25 @@ export default function NavBar() {
         )}
       </LeftAligned>
       {user ? (
-        <Button.Secondary onClick={handleLogoutClick}>Log Out</Button.Secondary>
+        <RightAligned>
+          <IconButton
+            aria-label="Create Sign Up Link"
+            title="Create Sign Up Link"
+            onClick={() => navigate('/signuplinks')}
+          >
+            <Icon.link />
+          </IconButton>
+          <Button.Secondary onClick={handleLogoutClick}>Log Out</Button.Secondary>
+        </RightAligned>
       ) : (
         <>
-          <Button.Primary onClick={() => navigate('/signup')}>
-            Sign Up
-          </Button.Primary>
-          <Button.Secondary onClick={() => navigate('/login')}>
+          
+          <Button.Primary onClick={() => navigate('/login')}>
             Login
-          </Button.Secondary>
+          </Button.Primary>
         </>
       )}
+      
       <LogoutModal
         isOpen={isModalOpen}
         onClose={handleModalClose}

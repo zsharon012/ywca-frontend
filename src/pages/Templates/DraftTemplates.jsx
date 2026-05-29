@@ -113,7 +113,7 @@ const FontSizeControl = ({ editor }) => {
   );
 };
 
-const EditorToolbar = ({ editor }) => {
+const EditorToolbar = ({ editor, onOpenGallery }) => {
   if (!editor) return null;
 
   const btn = (icon, action, active = false) => (
@@ -142,10 +142,7 @@ const EditorToolbar = ({ editor }) => {
         const url = prompt('Enter URL:');
         if (url) editor.chain().focus().setLink({ href: url }).run();
       })}
-      {btn(<ImageIcon />, () => {
-        const url = prompt('Enter Image URL:');
-        if (url) editor.chain().focus().setImage({ src: url }).run();
-      })}
+      {btn(<ImageIcon />, onOpenGallery)}
       <VariablePicker editor={editor} />
     </Stack>
   );
@@ -164,6 +161,10 @@ const DraftTemplates = () => {
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState(null);
   
   const lastSavedRef = useRef('');
 
@@ -204,6 +205,35 @@ const DraftTemplates = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadGalleryImages = async () => {
+    if (galleryLoading) return;
+
+    try {
+      setGalleryLoading(true);
+      setGalleryError(null);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/images`);
+      if (!res.ok) throw new Error('Failed to load gallery images');
+      const data = await res.json();
+      setGalleryImages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Gallery load failed:', err);
+      setGalleryError('Unable to fetch images from the gallery.');
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  const handleOpenGallery = async () => {
+    setGalleryOpen(true);
+    await loadGalleryImages();
+  };
+
+  const handleInsertGalleryImage = (url) => {
+    if (!editor) return;
+    editor.chain().focus().setImage({ src: url }).run();
+    setGalleryOpen(false);
   };
 
   useEffect(() => {
@@ -280,13 +310,28 @@ const DraftTemplates = () => {
         body: JSON.stringify(isUpdate ? payload : { ...payload, customname: true }),
       });
 
-      if (res.ok) {
-        setLastSavedTime(new Date());
-        lastSavedRef.current = `${name}|${subject}|${body}`;
-        if (!isUpdate) {
-            // Re-fetch to get the new ID for the sidebar and selection
-            await fetchTemplates();
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'Failed to save template');
+      }
+
+      const updatedTemplate = result.data || null;
+      setLastSavedTime(new Date());
+      lastSavedRef.current = `${name}|${subject}|${body}`;
+
+      if (isUpdate) {
+        if (updatedTemplate) {
+          setSelected(updatedTemplate);
+          setTemplates((current) => current.map((template) =>
+            template.templateid === updatedTemplate.templateid ? updatedTemplate : template
+          ));
+          setFilteredTemplates((current) => current.map((template) =>
+            template.templateid === updatedTemplate.templateid ? updatedTemplate : template
+          ));
         }
+      } else {
+        // Re-fetch to get the new ID for the sidebar and selection
+        await fetchTemplates();
       }
     } catch (err) {
       console.error('Save failed:', err);
@@ -425,7 +470,7 @@ const DraftTemplates = () => {
           />
         </Stack>
 
-        <EditorToolbar editor={editor} />
+        <EditorToolbar editor={editor} onOpenGallery={handleOpenGallery} />
 
         <Paper 
           variant="outlined" 
@@ -439,6 +484,46 @@ const DraftTemplates = () => {
         >
           <EditorContent editor={editor} />
         </Paper>
+
+        <Dialog open={galleryOpen} onClose={() => setGalleryOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Select an Image from Gallery</DialogTitle>
+          <DialogContent dividers>
+            {galleryLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : galleryError ? (
+              <Typography color="error">{galleryError}</Typography>
+            ) : galleryImages.length === 0 ? (
+              <Typography sx={{ py: 4, textAlign: 'center' }}>No images available in the gallery.</Typography>
+            ) : (
+              <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
+                {galleryImages.map((image) => (
+                  <Paper
+                    key={image.key}
+                    onClick={() => handleInsertGalleryImage(image.url)}
+                    sx={{
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      border: '1px solid #e0e0e0',
+                      '&:hover': { borderColor: 'primary.main', boxShadow: 3 }
+                    }}
+                  >
+                    <Box component="img" src={image.url} alt={image.key?.split('/').pop()} sx={{ width: '100%', height: 110, objectFit: 'cover' }} />
+                    <Box sx={{ p: 1, minHeight: 48 }}>
+                      <Typography variant="caption" noWrap>{image.key?.split('/').pop()}</Typography>
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setGalleryOpen(false)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Stack direction="row" spacing={2} alignItems="center">
           <Button 

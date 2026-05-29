@@ -1,5 +1,6 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { UserContext } from "@/common/contexts/UserContext";
+import { auth } from "@/firebase-config";
 import styled from "styled-components";
 
 
@@ -115,6 +116,7 @@ const Card = styled.div`
   background: var(--white, #fff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: transform 0.15s ease;
+  cursor: pointer;
 
   &:hover {
     transform: translateY(-3px);
@@ -136,6 +138,50 @@ const Img = styled.img`
   border-radius: 8px;
 `;
 
+// Modal styles
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+  position: relative;
+`;
+
+const ModalImg = styled.img`
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+`;
+
+const ModalButtons = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+`;
+
+const DeleteButton = styled(Button)`
+  background: #dc3545;
+
+  &:hover {
+    background: #c82333;
+  }
+`;
+
 
 export default function ImageGallery() {
   const { user } = useContext(UserContext);
@@ -143,11 +189,13 @@ export default function ImageGallery() {
   const [images, setImages] = useState([]);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const API = import.meta.env.VITE_BACKEND_URL;
 
 
-  const loadImages = async () => {
+  const loadImages = useCallback(async () => {
     try {
       const res = await fetch(`${API}/images`);
       const data = await res.json();
@@ -156,11 +204,11 @@ export default function ImageGallery() {
       console.error("Failed to load images:", err);
       setImages([]);
     }
-  };
+  }, [API]);
 
   useEffect(() => {
     loadImages();
-  }, []);
+  }, [loadImages]);
 
 
   const uploadImage = async () => {
@@ -206,6 +254,26 @@ export default function ImageGallery() {
     }
   };
 
+  const deleteImage = async (key) => {
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const res = await fetch(`${API}/images`, {
+        method: 'DELETE',
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ key })
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      setModalOpen(false);
+      await loadImages();
+    } catch (err) {
+      console.error(err);
+      alert('Delete failed');
+    }
+  };
+
   return (
     <Page>
       <TextContainer>
@@ -238,12 +306,25 @@ export default function ImageGallery() {
       {/* IMAGE GRID */}
       <Grid>
         {images.map((img) => (
-          <Card key={img.key}>
+          <Card key={img.key} onClick={() => { setSelectedImage(img); setModalOpen(true); }}>
             <Img src={img.url} alt={img.key?.split("/").pop()} />
             <small>{img.key?.split("/").pop()}</small>
           </Card>
         ))}
       </Grid>
+
+      {/* MODAL */}
+      {modalOpen && (
+        <ModalOverlay onClick={() => setModalOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalImg src={selectedImage.url} alt={selectedImage.key?.split("/").pop()} />
+            <ModalButtons>
+              <Button onClick={() => setModalOpen(false)}>Close</Button>
+              <DeleteButton onClick={() => deleteImage(selectedImage.key)}>Delete</DeleteButton>
+            </ModalButtons>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Page>
   );
 }
