@@ -138,6 +138,7 @@ function SummaryStats() {
 
         authFetch('/scheduledsends')
             .then(data => {
+                console.log('Fetched scheduled sends:', data);
                 setSent(data.filter(s => s.sent).length);
                 setScheduledEvents(data.map(s => ({
                     id: s.mailobjectid,
@@ -250,6 +251,11 @@ function SummaryStats() {
                         dateClick={handleDateClick}
                         eventClick={handleEventClick}
                         eventDidMount={(info) => {
+                            console.log(
+                                info.event.title,
+                                info.event.backgroundColor,
+                                getComputedStyle(info.el).backgroundColor
+                            );
                         const el = info.el;
 
                         el.style.overflow = 'hidden';

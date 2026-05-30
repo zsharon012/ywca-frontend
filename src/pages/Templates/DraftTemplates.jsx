@@ -156,6 +156,10 @@ const DraftTemplates = () => {
   const [selected, setSelected] = useState(null);
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
+
+  const [nameTouched, setNameTouched] = useState(false);
+  const [subjectTouched, setSubjectTouched] = useState(false);
+
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -179,6 +183,10 @@ const DraftTemplates = () => {
     ],
     content: '',
   });
+
+  const canSave =
+    name.trim() !== '' &&
+    subject.trim() !== '';
 
   const formatTime = (date) => {
     if (!date) return '';
@@ -279,12 +287,21 @@ const DraftTemplates = () => {
     setSelected(null);
     setName('');
     setSubject('');
+    setNameTouched(false);
+    setSubjectTouched(false);
     editor?.commands.setContent('');
     lastSavedRef.current = '';
     setLastSavedTime(null);
   };
 
   const saveTemplate = async (isAutosave = false) => {
+    if (!isAutosave && (!name.trim() || !subject.trim())) {
+      alert(
+        'Please enter both an Internal Template Name and an Email Subject Line before saving.'
+      );
+      return;
+    }
+
     if (!isAutosave) setSaving(true);
     const body = editor.getHTML();
 
@@ -452,20 +469,36 @@ const DraftTemplates = () => {
         </Box>
 
         <Stack spacing={2} sx={{ mb: 4 }}>
-          <TextField 
-            label="Internal Template Name" 
-            fullWidth 
-            value={name} 
-            onChange={e => setName(e.target.value)} 
+          <TextField
+            label="Internal Template Name"
+            required
+            fullWidth
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
             placeholder="e.g., Welcome Email v2"
+            error={nameTouched && !name.trim()}
+            helperText={
+              nameTouched && !name.trim()
+                ? 'Required before saving'
+                : 'Used internally to identify this template'
+            }
             sx={{ bgcolor: 'white' }}
           />
-          <TextField 
-            label="Email Subject Line" 
-            fullWidth 
-            value={subject} 
-            onChange={e => setSubject(e.target.value)} 
+          <TextField
+            label="Email Subject Line"
+            required
+            fullWidth
+            value={subject}
+            onChange={e => setSubject(e.target.value)}
+            onBlur={() => setSubjectTouched(true)}
             placeholder="e.g., Welcome to our platform!"
+            error={subjectTouched && !subject.trim()}
+            helperText={
+              subjectTouched && !subject.trim()
+                ? 'Required before saving'
+                : 'Recipients will see this subject line'
+            }
             sx={{ bgcolor: 'white' }}
           />
         </Stack>
@@ -531,7 +564,7 @@ const DraftTemplates = () => {
             color="success" 
             size="large" 
             onClick={() => saveTemplate(false)} 
-            disabled={saving}
+            disabled={saving || !canSave}
             sx={{ px: 4, py: 1.2, fontWeight: 700, textTransform: 'none' }}
           >
             {saving ? <CircularProgress size={24} color="inherit" /> : 'Save Template'}
