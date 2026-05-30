@@ -800,6 +800,10 @@ const Contacts = () => {
     {
       field: 'groups',
       headerName: 'Groups',
+      getQuickFilterText: (params) => {
+        if (!params.value) return '';
+        return params.value.map(g => g.name).join(' ');
+      },
       cellRenderer: (params) => (
         <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start', height: '100%', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignContent: 'flex-start', maxHeight: '60px', overflowY: 'auto', overflowX: 'auto', flex: 1, paddingRight: '4px' }}>
