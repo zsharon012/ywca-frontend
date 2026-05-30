@@ -143,7 +143,9 @@ function SummaryStats() {
                     id: s.mailobjectid,
                     title: s.subject,
                     date: s.sendate,
-                    color: s.sent ? '#4ade80' : '#60a5fa',
+                    backgroundColor: s.sent ? '#4ade80' : '#60a5fa',
+                    borderColor: s.sent ? '#4ade80' : '#60a5fa',
+                    textColor: '#ffffff',
                     editable: false,
                 })));
             })
@@ -198,7 +200,6 @@ function SummaryStats() {
                 {/* Calendar */}
                 <div
                     className="flex-1 min-w-0 rounded-[var(--border-radius-lg)] border border-black bg-white overflow-hidden p-3"
-                    onClick={e => e.stopPropagation()}
                 >
                     <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">Scheduled sends</p>
                     <style>{`
@@ -222,6 +223,22 @@ function SummaryStats() {
                             font-weight: 600 !important;
                             font-size: 12px !important;
                         }
+                        .fc-daygrid-day-events {
+                            overflow: hidden;
+                        }
+                        .fc-daygrid-event-harness {
+                            overflow: hidden;
+                        }
+                        .fc-event {
+                            cursor: pointer;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            text-overflow: ellipsis;
+                        }
+                        .fc-event-title {
+                            font-weight: 600 !important;
+                            font-size: 12px !important;
+                        }
                         ${popover ? `.fc-day[data-date="${popover.date}"] { background-color: rgba(45, 212, 191, 0.35) !important; }` : ''}
                     `}</style>
                     <FullCalendar
@@ -234,15 +251,24 @@ function SummaryStats() {
                         eventClick={handleEventClick}
                         eventDidMount={(info) => {
                             const el = info.el;
-                            const originalBgColor = window.getComputedStyle(el).backgroundColor;
-                            
+
                             el.style.overflow = 'hidden';
                             el.style.whiteSpace = 'nowrap';
                             el.style.textOverflow = 'ellipsis';
-                            el.style.transition = 'width 0.2s ease, box-shadow 0.2s ease';
                             el.style.zIndex = '1';
 
+                            // Save original color once at mount, before any hover
+                            const originalBgColor = window.getComputedStyle(el).backgroundColor;
+
+                            const ancestors = [];
+                            let node = el.parentElement;
+                            while (node && !node.classList.contains('fc-daygrid-day-frame')) {
+                                ancestors.push(node);
+                                node = node.parentElement;
+                            }
+
                             el.addEventListener('mouseenter', () => {
+                                ancestors.forEach(a => a.style.overflow = 'visible');
                                 el.style.overflow = 'visible';
                                 el.style.whiteSpace = 'nowrap';
                                 el.style.zIndex = '100';
@@ -251,9 +277,11 @@ function SummaryStats() {
                                 el.style.padding = '4px 8px';
                                 el.style.borderRadius = '4px';
                                 el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                                el.style.backgroundColor = originalBgColor;
                             });
 
                             el.addEventListener('mouseleave', () => {
+                                ancestors.forEach(a => a.style.overflow = '');
                                 el.style.overflow = 'hidden';
                                 el.style.whiteSpace = 'nowrap';
                                 el.style.zIndex = '1';
