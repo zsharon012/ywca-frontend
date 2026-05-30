@@ -14,7 +14,8 @@ import { StyledPage } from './styles';
 export default function SignUp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState('');
+  const [tokenError, setTokenError] = useState('');
+  const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isValidatingToken, setIsValidatingToken] = useState(true);
   const [signupToken, setSignupToken] = useState('');
@@ -34,7 +35,7 @@ export default function SignUp() {
       const token = searchParams.get('token');
       
       if (!token) {
-        setError('No signup token provided. Please use a valid signup link.');
+        setTokenError('No signup token provided. Please use a valid signup link.');
         setIsValidatingToken(false);
         return;
       }
@@ -56,10 +57,10 @@ export default function SignUp() {
         }
 
         setSignupToken(token);
-        setError('');
+        setTokenError('');
       } catch (err) {
         console.error('Token validation error:', err);
-        setError(err.message || 'Invalid or expired signup token');
+        setTokenError(err.message || 'Invalid or expired signup token');
       } finally {
         setIsValidatingToken(false);
       }
@@ -70,41 +71,41 @@ export default function SignUp() {
 
   const handleChangeFirstname = (e) => {
     setFormState({ ...formState, firstname: e.target.value });
-    setError('');
+    setFormError('');
   };
 
   const handleChangeLastname = (e) => {
     setFormState({ ...formState, lastname: e.target.value });
-    setError('');
+    setFormError('');
   };
 
   const handleChangeEmail = (e) => {
     setFormState({ ...formState, email: e.target.value });
-    setError('');
+    setFormError('');
   };
 
   const handleChangePassword = (e) => {
     setFormState({ ...formState, password: e.target.value });
-    setError('');
+    setFormError('');
   };
 
   const handleChangeUsername = (e) => {
     setFormState({ ...formState, username: e.target.value });
-    setError('');
+    setFormError('');
   };
 
   const handleGoogleSignup = async () => {
     try {
       await googleAuth();
     } catch (error) {
-      setError(error.message);
+      setFormError(error.message);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setFormError('');
 
     try {
       const response = await fetch(
@@ -138,7 +139,7 @@ export default function SignUp() {
       });
     } catch (error) {
       console.error('Signup error:', error);
-      setError(error.message || 'Failed to create account. Please try again.');
+      setFormError(error.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -158,8 +159,9 @@ export default function SignUp() {
     <StyledPage>
       <Form onSubmit={handleSubmit}>
         <FormTitle>Create an account</FormTitle>
-        {error && <RedSpan>{error}</RedSpan>}
-        {signupToken && !error && (
+        {tokenError && <RedSpan>{tokenError}</RedSpan>}
+        {formError && <RedSpan>{formError}</RedSpan>}
+        {signupToken && !tokenError && (
           <div style={{ color: 'green', marginBottom: '10px', fontSize: '14px' }}>
             ✓ Signup link verified. You can now create your account.
           </div>
@@ -169,14 +171,14 @@ export default function SignUp() {
           placeholder='John'
           value={formState.firstname}
           onChange={handleChangeFirstname}
-          disabled={!signupToken || !!error}
+          disabled={!signupToken}
         />
         <Input.Text
           title='Last name'
           placeholder='Smith'
           value={formState.lastname}
           onChange={handleChangeLastname}
-          disabled={!signupToken || !!error}
+          disabled={!signupToken}
         />
         <Input.Text
           title='Email'
@@ -184,28 +186,30 @@ export default function SignUp() {
           value={formState.email}
           onChange={handleChangeEmail}
           required
-          disabled={!signupToken || !!error}
+          disabled={!signupToken}
         />
         <Input.Text
           title='Username'
           placeholder='johnsmith'
           value={formState.username}
           onChange={handleChangeUsername}
-          disabled={!signupToken || !!error}
+          required
+          disabled={!signupToken}
         />
         <Input.Password
           title='Password'
+          placeholder='Enter your password'
           value={formState.password}
           onChange={handleChangePassword}
           required
-          disabled={!signupToken || !!error}
+          disabled={!signupToken}
         />
-        <SubmitButton onClick={() => {}} disabled={isLoading || !signupToken || !!error}>
+        <SubmitButton type="submit" disabled={isLoading || !signupToken}>
           {isLoading ? 'Creating account...' : 'Sign Up'}
         </SubmitButton>
         <GoogleButton
           onClick={handleGoogleSignup}
-          isLoading={isLoading || !signupToken || !!error}
+          isLoading={isLoading || !signupToken}
           text='Sign up with Google'
         />
       </Form>
