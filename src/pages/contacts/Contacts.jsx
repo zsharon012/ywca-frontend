@@ -273,6 +273,21 @@ const Contacts = () => {
     fetchGroups();
   }, []);
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        setShowGroupManagement(false);
+        setShowAddContact(false);
+        setShowAddGroup(false);
+        setSelectedContactForGroup(null);
+        setShowGroupMembersModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleCellValueChanged = async (event) => {
     const { data } = event;
 
@@ -924,16 +939,30 @@ const Contacts = () => {
           overflowY: 'auto',
           zIndex: 1000,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2>Groups</h2>
-            <button
-              onClick={() => setShowGroupManagement(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
-            >
-              <CloseIcon />
-            </button>
-          </div>
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            backgroundColor: 'white',
+            zIndex: 10,
+            padding: '10px 0',
+            borderBottom: '1px solid #eee',
+            marginBottom: '20px',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0 }}>Groups</h2>
 
+              <button
+                onClick={() => setShowGroupManagement(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+          </div>
           <button
             onClick={() => setShowAddGroup(true)}
             style={{
