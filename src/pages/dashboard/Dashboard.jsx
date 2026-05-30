@@ -178,31 +178,49 @@ function SummaryStats() {
 
     return (
         <DashboardCard title="Summary and Statistics">
-            <div className="flex flex-row items-start gap-6 w-full p-2">
+            <div className="flex flex-row items-stretch gap-4 w-full p-2">
+
                 {/* Summary Box */}
-                <div className="flex-1 min-w-0 rounded-[5px] border border-black bg-[#F3793E] shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] p-4 text-white">
-                    <h3 className="text-2xl font-bold mt-6 mb-4 ml-4">Summary</h3>
-                    <div className="ml-4 space-y-1">
-                        <h3 className="text-xl font-bold">Sent: {sent}</h3>
-                        <h3 className="text-xl font-bold">Pending: {pending}</h3>
+                <div className="flex flex-col gap-4 min-w-[180px] w-[180px]">
+                    <div className="flex flex-col gap-5 rounded-[var(--border-radius-lg)] p-5 self-start w-full" style={{ background: '#D85A30' }}>
+                        <p className="text-xs font-medium uppercase tracking-widest" style={{ color: '#FAECE7' }}>Overview</p>
+                        <div className="flex flex-col gap-3">
+                            {[{ label: 'Sent', value: sent }, { label: 'Pending', value: pending }].map(({ label, value }) => (
+                                <div key={label} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                    <p className="text-xs font-medium mb-1" style={{ color: '#F5C4B3' }}>{label}</p>
+                                    <p className="text-4xl font-medium leading-none" style={{ color: '#FAECE7' }}>{value}</p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* Calendar */}
                 <div
-                    className="flex-4 min-w-0 rounded-[5px] border border-black bg-white shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] overflow-hidden p-2"
+                    className="flex-1 min-w-0 rounded-[var(--border-radius-lg)] border border-black bg-white overflow-hidden p-3"
                     onClick={e => e.stopPropagation()}
                 >
+                    <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">Scheduled sends</p>
                     <style>{`
                         .fc-daygrid-day { position: relative; }
                         .fc-daygrid-day:hover::after {
-                            content: '+ add event';
+                            content: '+ add';
                             position: absolute;
                             bottom: 4px;
                             right: 6px;
-                            font-size: 11px;
+                            font-size: 10px;
                             color: #9ca3af;
                             pointer-events: none;
+                        }
+                        .fc-event {
+                            cursor: pointer;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            text-overflow: ellipsis;
+                        }
+                        .fc-event-title {
+                            font-weight: 600 !important;
+                            font-size: 12px !important;
                         }
                         ${popover ? `.fc-day[data-date="${popover.date}"] { background-color: rgba(45, 212, 191, 0.35) !important; }` : ''}
                     `}</style>
@@ -214,8 +232,49 @@ function SummaryStats() {
                         headerToolbar={{ left: 'prev,next', center: 'title', right: '' }}
                         dateClick={handleDateClick}
                         eventClick={handleEventClick}
+                        eventDidMount={(info) => {
+                            const el = info.el;
+                            const originalBgColor = window.getComputedStyle(el).backgroundColor;
+                            
+                            el.style.overflow = 'hidden';
+                            el.style.whiteSpace = 'nowrap';
+                            el.style.textOverflow = 'ellipsis';
+                            el.style.transition = 'width 0.2s ease, box-shadow 0.2s ease';
+                            el.style.zIndex = '1';
+
+                            el.addEventListener('mouseenter', () => {
+                                el.style.overflow = 'visible';
+                                el.style.whiteSpace = 'nowrap';
+                                el.style.zIndex = '100';
+                                el.style.width = 'max-content';
+                                el.style.maxWidth = '400px';
+                                el.style.padding = '4px 8px';
+                                el.style.borderRadius = '4px';
+                                el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                            });
+
+                            el.addEventListener('mouseleave', () => {
+                                el.style.overflow = 'hidden';
+                                el.style.whiteSpace = 'nowrap';
+                                el.style.zIndex = '1';
+                                el.style.width = '';
+                                el.style.maxWidth = '';
+                                el.style.padding = '';
+                                el.style.boxShadow = '';
+                                el.style.backgroundColor = originalBgColor;
+                            });
+                        }}
                     />
+                    <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">
+                        {[['#4ade80', 'Sent'], ['#60a5fa', 'Scheduled'], ['#f97316', 'Manual']].map(([color, label]) => (
+                            <div key={label} className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full inline-block" style={{ background: color }} />
+                                <span className="text-xs text-slate-400">{label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
+
             </div>
 
             {popover && (
