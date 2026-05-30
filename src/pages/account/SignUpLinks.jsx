@@ -109,7 +109,7 @@ export default function SignUpLinks() {
         
         <LinkWrapper>
           <LinkContainer>
-            <LinkText>{inviteLink || 'HTTPS://YWCA/SAMPLELINKTOSIGNUPPAGE'}</LinkText>
+            <LinkText>{inviteLink || 'Generate a link to see it here'}</LinkText>
             <CopyButton 
               $copied={copied} 
               onClick={handleCopy}
