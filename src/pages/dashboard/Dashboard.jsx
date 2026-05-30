@@ -199,7 +199,7 @@ function SummaryStats() {
 
                 {/* Calendar */}
                 <div
-                    className="flex-1 min-w-0 rounded-[var(--border-radius-lg)] border border-black bg-white overflow-hidden p-3"
+                    className="flex-1 min-w-0 rounded-[var(--border-radius-lg)] border border-black bg-white p-3"
                 >
                     <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">Scheduled sends</p>
                     <style>{`
@@ -250,48 +250,63 @@ function SummaryStats() {
                         dateClick={handleDateClick}
                         eventClick={handleEventClick}
                         eventDidMount={(info) => {
-                            const el = info.el;
+                        const el = info.el;
 
+                        el.style.overflow = 'hidden';
+                        el.style.whiteSpace = 'nowrap';
+                        el.style.textOverflow = 'ellipsis';
+                        el.style.zIndex = '1';
+
+                        const originalBgColor = window.getComputedStyle(el).backgroundColor;
+
+                        // Walk ALL the way up to the fc-view container, not just day-frame
+                        const ancestors = [];
+                        let node = el.parentElement;
+                        while (node && !node.classList.contains('fc-view-harness')) {
+                            ancestors.push(node);
+                            node = node.parentElement;
+                        }
+
+                        el.addEventListener('mouseenter', () => {
+                            ancestors.forEach(a => {
+                                a.style.overflow = 'visible';
+                                a.style.zIndex = 'auto';
+                            });
+                            el.style.overflow = 'visible';
+                            el.style.whiteSpace = 'nowrap';
+                            el.style.zIndex = '100';
+                            el.style.width = 'max-content';
+                            el.style.maxWidth = '400px';
+                            el.style.padding = '4px 8px';
+                            el.style.borderRadius = '4px';
+                            el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                            el.style.backgroundColor = originalBgColor;
+
+                            requestAnimationFrame(() => {
+                                const rect = el.getBoundingClientRect();
+                                const overflow = rect.right - (window.innerWidth - 8);
+                                if (overflow > 0) {
+                                    el.style.transform = `translateX(-${overflow}px)`;
+                                }
+                            });
+                        });
+
+                        el.addEventListener('mouseleave', () => {
+                            ancestors.forEach(a => {
+                                a.style.overflow = '';
+                                a.style.zIndex = '';
+                            });
                             el.style.overflow = 'hidden';
                             el.style.whiteSpace = 'nowrap';
-                            el.style.textOverflow = 'ellipsis';
                             el.style.zIndex = '1';
-
-                            // Save original color once at mount, before any hover
-                            const originalBgColor = window.getComputedStyle(el).backgroundColor;
-
-                            const ancestors = [];
-                            let node = el.parentElement;
-                            while (node && !node.classList.contains('fc-daygrid-day-frame')) {
-                                ancestors.push(node);
-                                node = node.parentElement;
-                            }
-
-                            el.addEventListener('mouseenter', () => {
-                                ancestors.forEach(a => a.style.overflow = 'visible');
-                                el.style.overflow = 'visible';
-                                el.style.whiteSpace = 'nowrap';
-                                el.style.zIndex = '100';
-                                el.style.width = 'max-content';
-                                el.style.maxWidth = '400px';
-                                el.style.padding = '4px 8px';
-                                el.style.borderRadius = '4px';
-                                el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-                                el.style.backgroundColor = originalBgColor;
-                            });
-
-                            el.addEventListener('mouseleave', () => {
-                                ancestors.forEach(a => a.style.overflow = '');
-                                el.style.overflow = 'hidden';
-                                el.style.whiteSpace = 'nowrap';
-                                el.style.zIndex = '1';
-                                el.style.width = '';
-                                el.style.maxWidth = '';
-                                el.style.padding = '';
-                                el.style.boxShadow = '';
-                                el.style.backgroundColor = originalBgColor;
-                            });
-                        }}
+                            el.style.width = '';
+                            el.style.maxWidth = '';
+                            el.style.padding = '';
+                            el.style.boxShadow = '';
+                            el.style.backgroundColor = originalBgColor;
+                            el.style.transform = '';
+                        });
+                    }}
                     />
                     <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">
                         {[['#4ade80', 'Sent'], ['#60a5fa', 'Scheduled'], ['#f97316', 'Manual']].map(([color, label]) => (
